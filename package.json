@@ -1,19 +1,19 @@
 {
-  "name": "koha-plugin-message-bee",
+  "name": "koha-plugin-unique-collections",
   "version": "0.0.1",
   "previous_version": "0.0.0",
-  "description": "Koha MessagBee Plugin",
+  "description": "Koha Unique Collections Plugin",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bywatersolutions/koha-plugin-message-bee.git"
+    "url": "git+https://github.com/bywatersolutions/koha-plugin-unique-collections.git"
   },
   "author": "Kyle M Hall <kyle@bywatersolutions.com>",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/bywatersolutions/koha-plugin-message-bee/issues"
+    "url": "https://github.com/bywatersolutions/koha-plugin-unique-collections/issues"
   },
-  "homepage": "https://github.com/bywatersolutions/koha-plugin-message-bee#readme"
+  "homepage": "https://github.com/bywatersolutions/koha-plugin-unique-collections#readme"
 }
