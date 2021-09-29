@@ -8,7 +8,5 @@ From the [release page](https://github.com/bywatersolutions/koha-plugin-unique-c
 
 # Installation
 
-This plugin requires no special installation. Simply download the kpz file from the releases page, then upload it to Koha from Administration / Plugins.
-
-# Configuration
-
+The plugin requires the Perl library _Text::CSV::Slurp_.
+Please install this library before installing the plugin.
