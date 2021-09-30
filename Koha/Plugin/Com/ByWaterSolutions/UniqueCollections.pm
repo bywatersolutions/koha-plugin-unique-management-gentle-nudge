@@ -1,4 +1,3 @@
-## Please see file perltidy.ERR
 package Koha::Plugin::Com::ByWaterSolutions::UniqueCollections;
 
 ## It's good practice to use Modern::Perl
@@ -10,6 +9,7 @@ use base qw(Koha::Plugins::Base);
 ## We will also need to include any Koha libraries we want to access
 use C4::Auth;
 use C4::Context;
+use Koha::Patron::Attribute::Types;
 use Koha::Patrons;
 
 use Carp;
@@ -18,6 +18,7 @@ use Text::CSV::Slurp;
 ## Here we set our plugin version
 our $VERSION         = "{VERSION}";
 our $MINIMUM_VERSION = "{MINIMUM_VERSION}";
+our $debug           = $ENV{DEBUG} // 0;
 
 our $metadata = {
     name            => 'Unique Management Services - Collections',
@@ -63,12 +64,14 @@ sub configure {
 
         ## Grab the values we already have for our settings, if any exist
         $template->param(
-            run_on_dow     => $self->retrieve_data('run_on_dow'),
-            categorycodes  => $self->retrieve_data('categorycodes'),
-            fees_threshold => $self->retrieve_data('fees_threshold'),
-            processing_fee => $self->retrieve_data('processing_fee'),
-            unique_email   => $self->retrieve_data('unique_email'),
-            cc_email       => $self->retrieve_data('cc_email'),
+            run_on_dow       => $self->retrieve_data('run_on_dow'),
+            categorycodes    => $self->retrieve_data('categorycodes'),
+            fees_threshold   => $self->retrieve_data('fees_threshold'),
+            processing_fee   => $self->retrieve_data('processing_fee'),
+            unique_email     => $self->retrieve_data('unique_email'),
+            cc_email         => $self->retrieve_data('cc_email'),
+            collections_flag => $self->retrieve_data('collections_flag'),
+            attributes       => scalar Koha::Patron::Attribute::Types->search(),
         );
 
         $self->output_html( $template->output() );
@@ -76,12 +79,13 @@ sub configure {
     else {
         $self->store_data(
             {
-                run_on_dow     => $cgi->param('run_on_dow'),
-                categorycodes  => $cgi->param('categorycodes'),
-                fees_threshold => $cgi->param('fees_threshold'),
-                processing_fee => $cgi->param('processing_fee'),
-                unique_email   => $cgi->param('unique_email'),
-                cc_email       => $cgi->param('cc_email'),
+                run_on_dow       => $cgi->param('run_on_dow'),
+                categorycodes    => $cgi->param('categorycodes'),
+                fees_threshold   => $cgi->param('fees_threshold'),
+                processing_fee   => $cgi->param('processing_fee'),
+                unique_email     => $cgi->param('unique_email'),
+                cc_email         => $cgi->param('cc_email'),
+                collections_flag => $cgi->param('collections_flag'),
             }
         );
         $self->go_home();
@@ -95,16 +99,23 @@ sub configure {
 sub cronjob_nightly {
     my ($self) = @_;
 
+    my $run_on_dow = $self->retrieve_data('run_on_dow');
+    unless ( (localtime)[6] == $run_on_dow ) {
+        say "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6] if $debug >= 1;
+        return;
+    }
+
     my $dbh = C4::Context->dbh;
     my $sth;
 
-    my $fees_threshold = $self->retrieve_data('fees_threshold');
-    my $processing_fee = $self->retrieve_data('processing_fee');
-    my $unique_email   = $self->retrieve_data('unique_email');
-    my $cc_email       = $self->retrieve_data('cc_email');
+    my $fees_threshold   = $self->retrieve_data('fees_threshold');
+    my $processing_fee   = $self->retrieve_data('processing_fee');
+    my $unique_email     = $self->retrieve_data('unique_email');
+    my $cc_email         = $self->retrieve_data('cc_email');
+    my $collections_flag = $self->retrieve_data('collections_flag');
 
-    my $run_on_dow = $self->retrieve_data('run_on_dow');
-    return unless (localtime)[6] == $run_on_dow;
+    my $flag_type =
+      $collections_flag eq 'sort1' ? 'borrower_field' : 'attribute_field';
 
     my @categorycodes = split( /,/, $self->retrieve_data('categorycodes') );
 
@@ -112,7 +123,7 @@ sub cronjob_nightly {
     my $to   = $cc_email ? "$unique_email,$cc_email" : $unique_email;
 
     my $today = dt_from_string();
-    my $date = $today->ymd();
+    my $date  = $today->ymd();
 
     ### Process new submissions
     my $ums_submission_query = q{
@@ -138,24 +149,38 @@ Format(Sum(amountoutstanding), 2)                AS Amt_In_Range,
 sub.due                                          AS Total_Due,
 sub.dueplus                                      AS Total_Plus_Fee
 FROM   accountlines
+    };
+
+    $ums_submission_query .= qq{
+       LEFT JOIN borrower_attributes ON borrowers.borrowernumber = borrower_attributes.borrowernumber
+                                    AND ( code = '$collections_flag' OR code IS NULL )
+                                    AND ( attribute = '0' OR attribute IS NULL )
+    } if $flag_type eq 'attribute_field';
+
+    $ums_submission_query .= qq{
        LEFT JOIN borrowers USING(borrowernumber)
        LEFT JOIN categories USING(categorycode)
        LEFT JOIN (SELECT Format(Sum(accountlines.amountoutstanding), 2)      AS
                          Due,
-                         Format(Sum(accountlines.amountoutstanding) + 10, 2) AS
-                         DuePlus
-                                                                  ,
+                         Format(Sum(accountlines.amountoutstanding) + $processing_fee, 2) AS
+                         DuePlus,
        borrowernumber
        FROM   accountlines
        GROUP  BY borrowernumber) AS sub USING(borrowernumber)
-WHERE  borrowers.sort1 != 'yes'
+WHERE  1=1
        AND accountlines.date > Date_sub(Curdate(), INTERVAL 90 day)
        AND accountlines.date < Date_sub(Curdate(), INTERVAL 45 day)
-};
+    };
+
+    $ums_submission_query .= q{
+       AND borrowers.sort1 != 'yes'
+    } if $flag_type eq 'borrower_field';
 
     if (@categorycodes) {
         my $codes = join( ',', map { qq{"$_"} } @categorycodes );
-        $ums_submission_query .= qq{ AND borrowers.categorycode IN ( $codes ) };
+        $ums_submission_query .= qq{
+       AND borrowers.categorycode IN ( $codes )
+        };
     }
 
     $ums_submission_query .= qq{
@@ -164,16 +189,43 @@ HAVING Sum(amountoutstanding) >= $fees_threshold
 ORDER  BY borrowers.surname ASC  
     };
 
+    say "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug >= 0;
+
     ### Update new submissions patrons, add fee, mark as being in collections
     $sth = $dbh->prepare($ums_submission_query);
     $sth->execute();
     my @ums_new_submissions;
     while ( my $r = $sth->fetchrow_hashref ) {
+        say "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
+
         my $patron = Koha::Patrons->find( $r->{borrowernumber} );
         next unless $patron;
 
-        $patron->sort1('yes')->update()
-          ;    # Could be turned into one query if too slow
+        if ( $flag_type eq 'borrower_field' ) {
+            $patron->sort1('yes')->update();
+        }
+        if ( $flag_type eq 'attribute_field' ) {
+            my $a = Koha::Patron::Attributes->find(
+                {
+                    borrowernumber => $patron->id,
+                    code           => $collections_flag,
+                }
+            );
+
+            if ($a) {
+                $a->attribute(1)->store();
+            }
+            else {
+                Koha::Patron::Attribute->new(
+                    {
+                        borrowernumber => $patron->id,
+                        code           => $collections_flag,
+                        attribute      => 1,
+                    }
+                )->store();
+            }
+        }
+
         $patron->account->add_debit(
             {
                 amount      => $processing_fee,
@@ -188,6 +240,7 @@ ORDER  BY borrowers.surname ASC
 
     ## Email the results
     my $csv = Text::CSV::Slurp->create( input => \@ums_new_submissions );
+    say "CSV:\n" . $csv if $debug >= 2;
 
     my $email = Koha::Email->new(
         {
@@ -224,20 +277,40 @@ SELECT borrowers.borrowernumber,
 FROM   accountlines
        LEFT JOIN borrowers USING(borrowernumber)
        LEFT JOIN categories USING(categorycode)
-WHERE  borrowers.sort1 = 'yes'
+    };
+
+    $ums_update_query .= qq{
+       LEFT JOIN borrower_attributes ON borrowers.borrowernumber = borrower_attributes.borrowernumber
+                                    AND ( code = '$collections_flag' )
+                                    AND ( attribute = '1' )
+    } if $flag_type eq 'attribute_field';
+
+    $ums_update_query .= q{
+WHERE  1=1 
+    };
+
+    $ums_update_query .= q{
+       AND borrowers.sort1 = 'yes'
+    } if $flag_type eq 'borrower_field';
+
+    $ums_update_query .= q{
 GROUP  BY borrowers.borrowernumber
 ORDER  BY borrowers.surname ASC  
     };
+
+    say "UMS UPDATE QUERY:\n$ums_update_query" if $debug >= 0;
 
     $sth = $dbh->prepare($ums_update_query);
     $sth->execute();
     my @ums_updates;
     while ( my $r = $sth->fetchrow_hashref ) {
+        say "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
         push( @ums_updates, $r );
     }
 
     ## Email the results
     $csv = Text::CSV::Slurp->create( input => \@ums_updates );
+    say "CSV:\n" . $csv if $debug >= 2;
 
     $email = Koha::Email->new(
         {
@@ -270,20 +343,55 @@ SELECT borrowers.borrowernumber,
        Format(Sum(accountlines.amountoutstanding), 2) AS Due
 FROM   accountlines
        LEFT JOIN borrowers USING(borrowernumber)
-WHERE  borrowers.sort1 = 'yes'
+    };
+
+    $ums_update_query .= qq{
+       LEFT JOIN borrower_attributes ON borrowers.borrowernumber = borrower_attributes.borrowernumber
+                                    AND ( code = '$collections_flag' )
+                                    AND ( attribute = '1' )
+    } if $flag_type eq 'attribute_field';
+
+    $ums_cleared_patrons_query = q{
+WHERE  1=1
+    };
+
+    $ums_update_query .= q{
+       AND borrowers.sort1 = 'yes'
+    } if $flag_type eq 'borrower_field';
+
+    $ums_update_query .= qq{
+       AND code = '$collections_flag'
+    } if $flag_type eq 'attribute_field';
+
+    $ums_update_query .= q{
 GROUP  BY borrowers.borrowernumber
 HAVING due = 0.00  
     };
-    
+
+    say "UMS CLEARED PATRONS QUERY:\n$ums_update_query" if $debug >= 0;
+
     $sth = $dbh->prepare($ums_cleared_patrons_query);
     $sth->execute();
     while ( my $r = $sth->fetchrow_hashref ) {
+        say "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
+
         my $patron = Koha::Patrons->find( $r->{borrowernumber} );
         next unless $patron;
 
-        $patron->sort1('no')->update();
-    }
+        if ( $flag_type eq 'borrower_field' ) {
+            $patron->sort1('no')->update();
+        }
+        if ( $flag_type eq 'attribute_field' ) {
+            my $a = Koha::Patron::Attributes->find(
+                {
+                    borrowernumber => $patron->id,
+                    code           => $collections_flag,
+                }
+            );
 
+            $a->attribute(0)->store() if $a;
+        }
+    }
 }
 
 =head3 install

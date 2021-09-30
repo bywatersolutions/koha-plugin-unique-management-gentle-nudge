@@ -66,6 +66,21 @@
         <span class="help-block">If you would like to send the report to another email address as well, enter it here.</span>
       </div>
 
+      <div class="form-group">
+        <label for="collections_flag">Collecions flag</label>
+        <select name="collections_flag" class="form-control">
+          <option value="sort1" [% IF collections_flag == "sort1" %]selected="selected"[% END %]>sort1</option>
+          [% FOREACH a IN attributes %]
+              <option value="[% a.code %]" [% IF collections_flag == a.code %]selected="selected"[% END %]>[% a.description | html %]</option>
+          [% END %]
+        </select>
+        <span class="help-block">
+            Specify the how the patron is flagged as being in collections.
+            If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO authorised value category.
+            If using another category, the authorized values should be 0 and 1, but the descriptions can be set to your preference.
+        </span>
+      </div>
+
       <button type="submit" class="btn btn-default">Submit</button>
     </form>
 
