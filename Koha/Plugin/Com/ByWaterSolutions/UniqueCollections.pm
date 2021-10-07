@@ -13,14 +13,16 @@ use Koha::DateUtils qw(dt_from_string);
 use Koha::Patron::Attribute::Types;
 use Koha::Patrons;
 
+use File::Slurp;
 use Text::CSV::Slurp;
 use Try::Tiny;
 
 ## Here we set our plugin version
 our $VERSION         = "{VERSION}";
 our $MINIMUM_VERSION = "{MINIMUM_VERSION}";
-our $debug           = $ENV{DEBUG} // 0;
-our $no_email        = $ENV{NO_EMAIL} // 0;
+our $debug           = $ENV{UMS_COLLECTIONS_DEBUG} // 0;
+our $no_email        = $ENV{UMS_COLLECTIONS_NO_EMAIL} // 0;
+our $archive_dir     = $ENV{UMS_COLLECTIONS_ARCHIVES_DIR} // undef;
 
 our $metadata = {
     name            => 'Unique Management Services - Collections',
@@ -250,6 +252,8 @@ ORDER  BY borrowers.surname ASC
         my $csv = Text::CSV::Slurp->create( input => \@ums_new_submissions );
         say "CSV:\n" . $csv if $debug >= 2;
 
+        write_file("$archive_dir/ums-new-submissions-$date.csv") if $archive_dir;
+
         my $email = Koha::Email->new(
             {
                 to      => $to,
@@ -327,6 +331,8 @@ ORDER  BY borrowers.surname ASC
         ## Email the results
         my $csv = Text::CSV::Slurp->create( input => \@ums_updates );
         say "CSV:\n" . $csv if $debug >= 2;
+
+        write_file("$archive_dir/ums-updates-$date.csv") if $archive_dir;
 
         my $email = Koha::Email->new(
             {
