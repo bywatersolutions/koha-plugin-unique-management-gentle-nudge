@@ -137,7 +137,13 @@ sub cronjob_nightly {
     ### Process new submissions
     my $ums_submission_query = q{
 SELECT
+    };
+
+    $ums_submission_query .= q{
 MAX(attribute),
+    } if $flag_type eq 'attribute_field';
+
+    $ums_submission_query .= q{
 CONCAT ('<a href=\"/cgi-bin/koha/members/maninvoice.pl?borrowernumber=', borrowers.borrowernumber, '\" target="_blank">', MAX(borrowers.cardnumber), '</a>') AS "Link to Fines",
 MAX(borrowers.borrowernumber)     AS "borrowernumber",
 MAX(borrowers.surname)            AS "surname",
