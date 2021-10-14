@@ -105,12 +105,13 @@ sub configure {
 sub cronjob_nightly {
     my ($self) = @_;
 
+    my $run_weeklys;
     my $run_on_dow = $self->retrieve_data('run_on_dow');
     unless ( (localtime)[6] == $run_on_dow ) {
         say "Run on Day of Week $run_on_dow does not match current day of week "
           . (localtime)[6]
           if $debug >= 1;
-        return;
+        $run_weeklys = 1;
     }
 
     my $dbh = C4::Context->dbh;
@@ -123,27 +124,28 @@ sub cronjob_nightly {
     my $collections_flag  = $self->retrieve_data('collections_flag');
     my $fees_starting_age = $self->retrieve_data('fees_starting_age');
 
-    my $flag_type =
-      $collections_flag eq 'sort1' || $collections_flag eq 'sort2' ? 'borrower_field' : 'attribute_field';
+    my $flag_type = $collections_flag eq 'sort1'
+      || $collections_flag eq 'sort2' ? 'borrower_field' : 'attribute_field';
 
     my @categorycodes = split( /,/, $self->retrieve_data('categorycodes') );
 
     my $from = C4::Context->preference('KohaAdminEmailAddress');
-    my $to   = $cc_email ? "$unique_email,$cc_email" : $unique_email;
+    my $to = $cc_email ? "$unique_email,$cc_email" : $unique_email;
 
     my $today = dt_from_string();
     my $date  = $today->ymd();
 
     ### Process new submissions
-    my $ums_submission_query = q{
+    if ($run_weeklys) {
+        my $ums_submission_query = q{
 SELECT
     };
 
-    $ums_submission_query .= q{
+        $ums_submission_query .= q{
 MAX(attribute),
     } if $flag_type eq 'attribute_field';
 
-    $ums_submission_query .= q{
+        $ums_submission_query .= q{
 CONCAT ('<a href=\"/cgi-bin/koha/members/maninvoice.pl?borrowernumber=', borrowers.borrowernumber, '\" target="_blank">', MAX(borrowers.cardnumber), '</a>') AS "Link to Fines",
 MAX(borrowers.borrowernumber)     AS "borrowernumber",
 MAX(borrowers.surname)            AS "surname",
@@ -165,12 +167,12 @@ MAX(sub.dueplus)                  AS Total_Plus_Fee
 FROM   accountlines
     };
 
-    $ums_submission_query .= qq{
+        $ums_submission_query .= qq{
        LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
                                     AND code = '$collections_flag'
     } if $flag_type eq 'attribute_field';
 
-    $ums_submission_query .= qq{
+        $ums_submission_query .= qq{
        LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
        LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
        LEFT JOIN (SELECT FORMAT(Sum(accountlines.amountoutstanding), 2) AS Due,
@@ -179,115 +181,117 @@ FROM   accountlines
                   FROM   accountlines
                   GROUP  BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
 WHERE  1=1
-       AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
        AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $fees_starting_age DAY)
     };
 
-    $ums_submission_query .= qq{
+        $ums_submission_query .= qq{
        AND borrowers.$collections_flag != 'yes'
     } if $flag_type eq 'borrower_field';
 
-    $ums_submission_query .= q{
+        $ums_submission_query .= q{
        AND ( attribute = '0' OR attribute IS NULL )
     } if $flag_type eq 'attribute_field';
 
-    if (@categorycodes) {
-        my $codes = join( ',', map { qq{"$_"} } @categorycodes );
-        $ums_submission_query .= qq{
+        if (@categorycodes) {
+            my $codes = join( ',', map { qq{"$_"} } @categorycodes );
+            $ums_submission_query .= qq{
        AND borrowers.categorycode IN ( $codes )
         };
-    }
+        }
 
-    $ums_submission_query .= qq{
+        $ums_submission_query .= qq{
 GROUP  BY borrowers.borrowernumber
 HAVING Sum(amountoutstanding) >= $fees_threshold
 ORDER  BY borrowers.surname ASC  
     };
 
-    say "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug >= 0;
+        say "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug >= 0;
 
-    ### Update new submissions patrons, add fee, mark as being in collections
-    $sth = $dbh->prepare($ums_submission_query);
-    $sth->execute();
-    my @ums_new_submissions;
-    while ( my $r = $sth->fetchrow_hashref ) {
-        say "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
+        ### Update new submissions patrons, add fee, mark as being in collections
+        $sth = $dbh->prepare($ums_submission_query);
+        $sth->execute();
+        my @ums_new_submissions;
+        while ( my $r = $sth->fetchrow_hashref ) {
+            say "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
 
-        my $patron = Koha::Patrons->find( $r->{borrowernumber} );
-        next unless $patron;
+            my $patron = Koha::Patrons->find( $r->{borrowernumber} );
+            next unless $patron;
 
-        if ( $flag_type eq 'borrower_field' ) {
-            $patron->update({ $collections_flag => 'yes' });
-        }
-        if ( $flag_type eq 'attribute_field' ) {
-            my $a = Koha::Patron::Attributes->find(
-                {
-                    borrowernumber => $patron->id,
-                    code           => $collections_flag,
-                }
-            );
-
-            if ($a) {
-                $a->attribute(1)->store();
+            if ( $flag_type eq 'borrower_field' ) {
+                $patron->update( { $collections_flag => 'yes' } );
             }
-            else {
-                Koha::Patron::Attribute->new(
+            if ( $flag_type eq 'attribute_field' ) {
+                my $a = Koha::Patron::Attributes->find(
                     {
                         borrowernumber => $patron->id,
                         code           => $collections_flag,
-                        attribute      => 1,
                     }
-                )->store();
+                );
+
+                if ($a) {
+                    $a->attribute(1)->store();
+                }
+                else {
+                    Koha::Patron::Attribute->new(
+                        {
+                            borrowernumber => $patron->id,
+                            code           => $collections_flag,
+                            attribute      => 1,
+                        }
+                    )->store();
+                }
             }
+
+            $patron->account->add_debit(
+                {
+                    amount      => $processing_fee,
+                    description => "UMS Processing Fee",
+                    interface   => 'cron',
+                    type        => 'PROCESSING',
+                }
+            );
+
+            push( @ums_new_submissions, $r );
         }
 
-        $patron->account->add_debit(
-            {
-                amount      => $processing_fee,
-                description => "UMS Processing Fee",
-                interface   => 'cron',
-                type        => 'PROCESSING',
+        ## Email the results
+        if (@ums_new_submissions) {
+            my $csv =
+              Text::CSV::Slurp->create( input => \@ums_new_submissions );
+            say "CSV:\n" . $csv if $debug >= 2;
+
+            write_file("$archive_dir/ums-new-submissions-$date.csv")
+              if $archive_dir;
+
+            my $email = Koha::Email->new(
+                {
+                    to      => $to,
+                    from    => $from,
+                    subject => "UMS New Submissions for "
+                      . C4::Context->preference('LibraryName'),
+                }
+            );
+
+            $email->attach(
+                Encode::encode_utf8($csv),
+                content_type => "text/csv",
+                name         => "ums-new-submissions-$date.csv",
+                disposition  => 'attachment',
+            );
+
+            my $smtp_server = Koha::SMTP::Servers->get_default;
+            $email->transport( $smtp_server->transport );
+
+            try {
+                $email->send_or_die unless $no_email;
             }
-        );
-
-        push( @ums_new_submissions, $r );
-    }
-
-    ## Email the results
-    if (@ums_new_submissions) {
-        my $csv = Text::CSV::Slurp->create( input => \@ums_new_submissions );
-        say "CSV:\n" . $csv if $debug >= 2;
-
-        write_file("$archive_dir/ums-new-submissions-$date.csv") if $archive_dir;
-
-        my $email = Koha::Email->new(
-            {
-                to      => $to,
-                from    => $from,
-                subject => "UMS New Submissions for "
-                  . C4::Context->preference('LibraryName'),
-            }
-        );
-
-        $email->attach(
-            Encode::encode_utf8($csv),
-            content_type => "text/csv",
-            name         => "ums-new-submissions-$date.csv",
-            disposition  => 'attachment',
-        );
-
-        my $smtp_server = Koha::SMTP::Servers->get_default;
-        $email->transport( $smtp_server->transport );
-
-        try {
-            $email->send_or_die unless $no_email;;
+            catch {
+                warn "Mail not sent: $_";
+            };
         }
-        catch {
-            warn "Mail not sent: $_";
-        };
-    }
-    else {
-        say "NO NEW SUBMISSIONS TO SUBMIT\n\n" if $debug >= 1;
+        else {
+            say "NO NEW SUBMISSIONS TO SUBMIT\n\n" if $debug >= 1;
+        }
     }
 
     ### Process UMS Update Report
@@ -370,7 +374,6 @@ ORDER  BY borrowers.surname ASC
         say "NO UPDATES TO SUBMIT\n\n" if $debug >= 1;
     }
 
-
     ### Clear the "in collections" flag for patrons that are now paid off
     my $ums_cleared_patrons_query = q{
 SELECT borrowers.borrowernumber,
@@ -412,7 +415,7 @@ HAVING due = 0.00
         next unless $patron;
 
         if ( $flag_type eq 'borrower_field' ) {
-            $patron->update({ $collections_flag => 'no' });
+            $patron->update( { $collections_flag => 'no' } );
         }
         if ( $flag_type eq 'attribute_field' ) {
             my $a = Koha::Patron::Attributes->find(
