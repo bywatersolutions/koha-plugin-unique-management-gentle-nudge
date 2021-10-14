@@ -33,7 +33,7 @@
       <div class="form-group">
         <label for="categorycodes">Patron categories</label>
         <input type="text" name="categorycodes" class="form-control" value="[% categorycodes %]">
-        <span class="help-block">Comma delimited list of patron category codes that are eligible for collections. e.g. "CAT1,CAT2,CAT3"</span>
+        <span class="help-block">Comma delimited list of patron category codes that are eligible for collections. e.g. "CAT1,CAT2,CAT3". Leave blank for all categories.</span>
       </div>
 
       <div class="form-group">
@@ -67,9 +67,10 @@
       </div>
 
       <div class="form-group">
-        <label for="collections_flag">Collecions flag</label>
+        <label for="collections_flag">Collections flag</label>
         <select name="collections_flag" class="form-control">
           <option value="sort1" [% IF collections_flag == "sort1" %]selected="selected"[% END %]>sort1</option>
+          <option value="sort2" [% IF collections_flag == "sort2" %]selected="selected"[% END %]>sort2</option>
           [% FOREACH a IN attributes %]
               <option value="[% a.code %]" [% IF collections_flag == a.code %]selected="selected"[% END %]>[% a.description | html %]</option>
           [% END %]

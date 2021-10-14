@@ -124,7 +124,7 @@ sub cronjob_nightly {
     my $fees_starting_age = $self->retrieve_data('fees_starting_age');
 
     my $flag_type =
-      $collections_flag eq 'sort1' ? 'borrower_field' : 'attribute_field';
+      $collections_flag eq 'sort1' || $collections_flag eq 'sort2' ? 'borrower_field' : 'attribute_field';
 
     my @categorycodes = split( /,/, $self->retrieve_data('categorycodes') );
 
@@ -183,8 +183,8 @@ WHERE  1=1
        AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $fees_starting_age DAY)
     };
 
-    $ums_submission_query .= q{
-       AND borrowers.sort1 != 'yes'
+    $ums_submission_query .= qq{
+       AND borrowers.$collections_flag != 'yes'
     } if $flag_type eq 'borrower_field';
 
     $ums_submission_query .= q{
@@ -217,7 +217,7 @@ ORDER  BY borrowers.surname ASC
         next unless $patron;
 
         if ( $flag_type eq 'borrower_field' ) {
-            $patron->sort1('yes')->update();
+            $patron->update({ $collections_flag => 'yes' });
         }
         if ( $flag_type eq 'attribute_field' ) {
             my $a = Koha::Patron::Attributes->find(
@@ -314,8 +314,8 @@ WHERE  1=1
        AND attribute = '1'
     } if $flag_type eq 'attribute_field';
 
-    $ums_update_query .= q{
-       AND borrowers.sort1 = 'yes'
+    $ums_update_query .= qq{
+       AND borrowers.$collections_flag = 'yes'
     } if $flag_type eq 'borrower_field';
 
     $ums_update_query .= q{
@@ -388,8 +388,8 @@ FROM   accountlines
 WHERE  1=1
     };
 
-    $ums_update_query .= q{
-       AND borrowers.sort1 = 'yes'
+    $ums_update_query .= qq{
+       AND borrowers.$collections_flag = 'yes'
     } if $flag_type eq 'borrower_field';
 
     $ums_update_query .= qq{
@@ -412,7 +412,7 @@ HAVING due = 0.00
         next unless $patron;
 
         if ( $flag_type eq 'borrower_field' ) {
-            $patron->sort1('no')->update();
+            $patron->update({ $collections_flag => 'no' });
         }
         if ( $flag_type eq 'attribute_field' ) {
             my $a = Koha::Patron::Attributes->find(
