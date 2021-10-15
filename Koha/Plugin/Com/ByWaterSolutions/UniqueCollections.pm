@@ -116,9 +116,6 @@ sub cronjob_nightly {
         $run_weeklys = 1;
     }
 
-    my $dbh = C4::Context->dbh;
-    my $sth;
-
     my $params = {};
 
     my $unique_email = $self->retrieve_data('unique_email');
