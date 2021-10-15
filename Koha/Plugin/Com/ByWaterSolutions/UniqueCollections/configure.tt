@@ -97,6 +97,15 @@
         <span class="help-block">If enabled, patrons who have paid off all they owe will have the collections flag removed automatically.</span>
       </div>
 
+      <div class="form-group">
+        <label for="add_restriction">Add restriction for patrons entering collections</label>
+        <select name="add_restriction" class="form-control">
+          <option value="yes" [% IF add_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
+          <option value="no" [% IF add_restriction == "no" %]selected="selected"[% END %]>No</option>
+        </select>
+        <span class="help-block">If enabled, newly flag patrons will have a restriction added to their record.</span>
+      </div>
+
       <button type="submit" class="btn btn-default">Submit</button>
     </form>
 

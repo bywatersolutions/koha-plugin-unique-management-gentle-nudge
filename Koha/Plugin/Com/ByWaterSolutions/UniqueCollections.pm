@@ -11,6 +11,7 @@ use C4::Auth;
 use C4::Context;
 use Koha::DateUtils qw(dt_from_string);
 use Koha::Patron::Attribute::Types;
+use Koha::Patron::Debarments;
 use Koha::Patrons;
 
 use File::Slurp;
@@ -77,6 +78,7 @@ sub configure {
             collections_flag  => $self->retrieve_data('collections_flag'),
             fees_starting_age => $self->retrieve_data('fees_starting_age'),
             auto_clear_paid   => $self->retrieve_data('auto_clear_paid'),
+            add_restriction   => $self->retrieve_data('add_restriction'),
             attributes => scalar Koha::Patron::Attribute::Types->search(),
         );
 
@@ -94,6 +96,7 @@ sub configure {
                 collections_flag  => $cgi->param('collections_flag'),
                 fees_starting_age => $cgi->param('fees_starting_age'),
                 auto_clear_paid   => $cgi->param('auto_clear_paid'),
+                add_restriction   => $cgi->param('add_restriction'),
             }
         );
         $self->go_home();
@@ -128,6 +131,7 @@ sub cronjob_nightly {
     $params->{collections_flag}  = $self->retrieve_data('collections_flag');
     $params->{fees_starting_age} = $self->retrieve_data('fees_starting_age');
     $params->{auto_clear_paid}   = $self->retrieve_data('auto_clear_paid');
+    $params->{add_restriction}   = $self->retrieve_data('add_restriction');
 
     $params->{flag_type} =
          $params->{collections_flag} eq 'sort1'
@@ -241,6 +245,17 @@ FROM   accountlines
 
         my $patron = Koha::Patrons->find( $r->{borrowernumber} );
         next unless $patron;
+
+        if ( $params->{add_restriction} eq 'yes' ) {
+            AddDebarment(
+                {
+                    borrowernumber => $patron->borrowernumber,
+                    expiration     => undef,
+                    type           => 'MANUAL',
+                    comment => "Patron sent to collections on $params->{date}",
+                }
+            );
+        }
 
         if ( $params->{flag_type} eq 'borrower_field' ) {
             $patron->update( { $params->{collections_flag} => 'yes' } );
