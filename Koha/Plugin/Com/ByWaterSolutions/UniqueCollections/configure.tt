@@ -85,7 +85,7 @@
       <div class="form-group">
         <label for="fees_starting_age">Collect on fees older than</label>
         <input type="text" name="fees_starting_age" class="form-control" value="[% fees_starting_age %]">
-        <span class="help-block">Fees older than this number of days will be sent to collections.</span>
+        <span class="help-block">Fees older than this number of days will be totaled to check if patron should be  sent to collections.</span>
       </div>
 
       <div class="form-group">
