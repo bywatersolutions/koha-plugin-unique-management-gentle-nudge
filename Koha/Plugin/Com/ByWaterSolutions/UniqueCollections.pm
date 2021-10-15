@@ -111,6 +111,7 @@ sub cronjob_nightly {
         say "Run on Day of Week $run_on_dow does not match current day of week "
           . (localtime)[6]
           if $debug >= 1;
+    } else {
         $run_weeklys = 1;
     }
 
@@ -260,8 +261,9 @@ ORDER  BY borrowers.surname ASC
               Text::CSV::Slurp->create( input => \@ums_new_submissions );
             say "CSV:\n" . $csv if $debug >= 2;
 
-            write_file("$archive_dir/ums-new-submissions-$date.csv")
+            write_file("$archive_dir/ums-new-submissions-$date.csv", $csv)
               if $archive_dir;
+            say "ARCHIVE WRITTEN TO $archive_dir/ums-new-submissions-$date.csv" if $archive_dir && $debug;
 
             my $email = Koha::Email->new(
                 {
@@ -292,6 +294,8 @@ ORDER  BY borrowers.surname ASC
         else {
             say "NO NEW SUBMISSIONS TO SUBMIT\n\n" if $debug >= 1;
         }
+    } else {
+        say "NOT THE DOW TO RUN SUBMISSIONS\n\n" if $debug >= 1;
     }
 
     ### Process UMS Update Report
@@ -342,7 +346,8 @@ ORDER  BY borrowers.surname ASC
         my $csv = Text::CSV::Slurp->create( input => \@ums_updates );
         say "CSV:\n" . $csv if $debug >= 2;
 
-        write_file("$archive_dir/ums-updates-$date.csv") if $archive_dir;
+        write_file("$archive_dir/ums-updates-$date.csv", $csv) if $archive_dir;
+        say "ARCHIVE WRITTEN TO $archive_dir/ums-updates-$date.csv" if $archive_dir && $debug;
 
         my $email = Koha::Email->new(
             {
