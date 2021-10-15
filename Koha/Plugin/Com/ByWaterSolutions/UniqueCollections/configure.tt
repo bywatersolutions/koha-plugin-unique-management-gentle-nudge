@@ -88,6 +88,15 @@
         <span class="help-block">Fees older than this number of days will be sent to collections.</span>
       </div>
 
+      <div class="form-group">
+        <label for="auto_clear_paid">Clear collections flag for patrons with zero balance</label>
+        <select name="auto_clear_paid" class="form-control">
+          <option value="yes" [% IF auto_clear_paid == "yes" %]selected="selected"[% END %]>Yes</option>
+          <option value="no" [% IF auto_clear_paid == "no" %]selected="selected"[% END %]>No</option>
+        </select>
+        <span class="help-block">If enabled, patrons who have paid off all they owe will have the collections flag removed automatically.</span>
+      </div>
+
       <button type="submit" class="btn btn-default">Submit</button>
     </form>
 

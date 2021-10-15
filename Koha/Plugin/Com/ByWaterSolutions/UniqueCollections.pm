@@ -76,6 +76,7 @@ sub configure {
             cc_email          => $self->retrieve_data('cc_email'),
             collections_flag  => $self->retrieve_data('collections_flag'),
             fees_starting_age => $self->retrieve_data('fees_starting_age'),
+            auto_clear_paid   => $self->retrieve_data('auto_clear_paid'),
             attributes => scalar Koha::Patron::Attribute::Types->search(),
         );
 
@@ -92,6 +93,7 @@ sub configure {
                 cc_email          => $cgi->param('cc_email'),
                 collections_flag  => $cgi->param('collections_flag'),
                 fees_starting_age => $cgi->param('fees_starting_age'),
+                auto_clear_paid   => $cgi->param('auto_clear_paid'),
             }
         );
         $self->go_home();
@@ -125,8 +127,10 @@ sub cronjob_nightly {
     $params->{processing_fee}    = $self->retrieve_data('processing_fee');
     $params->{collections_flag}  = $self->retrieve_data('collections_flag');
     $params->{fees_starting_age} = $self->retrieve_data('fees_starting_age');
+    $params->{auto_clear_paid}   = $self->retrieve_data('auto_clear_paid');
 
-    $params->{flag_type} = $params->{collections_flag} eq 'sort1'
+    $params->{flag_type} =
+         $params->{collections_flag} eq 'sort1'
       || $params->{collections_flag} eq 'sort2'
       ? 'borrower_field'
       : 'attribute_field';
@@ -366,7 +370,7 @@ sub run_update_report_and_clear_paid {
         push( @ums_updates, $r );
 
         $self->clear_patron_from_collections( $params, $r->{borrowernumber} )
-          if $r->{Due} eq "0.00";
+          if $params->{auto_clear_paid} eq 'yes' && $r->{Due} eq "0.00";
     }
 
     if (@ums_updates) {
