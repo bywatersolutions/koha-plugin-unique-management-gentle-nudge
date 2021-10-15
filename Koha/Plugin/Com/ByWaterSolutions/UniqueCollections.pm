@@ -287,7 +287,7 @@ FROM   accountlines
                 amount      => $params->{processing_fee},
                 description => "UMS Processing Fee",
                 interface   => 'cron',
-                type        => 'PROCESSING',
+                type        => 'MANUAL',
             }
         );
 
