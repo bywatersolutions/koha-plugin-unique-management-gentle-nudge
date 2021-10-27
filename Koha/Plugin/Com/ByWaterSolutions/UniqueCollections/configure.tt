@@ -115,4 +115,11 @@
       <button type="submit" class="btn btn-default">Submit</button>
     </form>
 
+    <form method="get">
+      <input type="hidden" name="class" value="[% CLASS %]"/>
+      <input type="hidden" name="method" value="[% METHOD %]"/>
+      <input type="hidden" name="sync" value="1" />
+      <button type="submit" class="btn btn-default">Send sync report</button>
+    </form>
+
 [% INCLUDE 'intranet-bottom.inc' %]

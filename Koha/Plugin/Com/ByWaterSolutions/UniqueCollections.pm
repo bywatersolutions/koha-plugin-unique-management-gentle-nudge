@@ -67,6 +67,10 @@ sub configure {
     unless ( $cgi->param('save') ) {
         my $template = $self->get_template( { file => 'configure.tt' } );
 
+        if ( $cgi->param('sync') ) {
+            $self->cronjob_nightly( { send_sync_report => 1 } );
+        }
+
         ## Grab the values we already have for our settings, if any exist
         $template->param(
             run_on_dow        => $self->retrieve_data('run_on_dow'),
@@ -110,7 +114,7 @@ sub configure {
 =cut
 
 sub cronjob_nightly {
-    my ($self) = @_;
+    my ($self, $p) = @_;
 
     my $run_weeklys;
     my $run_on_dow = $self->retrieve_data('run_on_dow');
@@ -123,7 +127,7 @@ sub cronjob_nightly {
         $run_weeklys = 1;
     }
 
-    my $params = {};
+    my $params = { send_sync_report => $p->{send_sync_report} };
 
     my $unique_email = $self->retrieve_data('unique_email');
     my $cc_email     = $self->retrieve_data('cc_email');
@@ -157,10 +161,10 @@ sub cronjob_nightly {
     $params->{date} = $today->ymd();
 
     ### Process new submissions
-    if ($run_weeklys) {
+    if ( $run_weeklys && !$params->{send_sync_report} ) {
         $self->run_submissions_report($params);
     }
-    else {
+    elsif ( !$params->{send_sync_report} ) {
         say "NOT THE DOW TO RUN SUBMISSIONS\n\n" if $debug >= 1;
     }
 
@@ -399,12 +403,14 @@ sub run_update_report_and_clear_paid {
 
     if (@ums_updates) {
 ## Email the results
+        my $type = $params->{send_sync_report} ? 'sync' : 'updates';
+
         my $csv = Text::CSV::Slurp->create( input => \@ums_updates );
         say "CSV:\n" . $csv if $debug >= 2;
 
-        write_file( "$archive_dir/ums-updates-$params->{date}.csv", $csv )
+        write_file( "$archive_dir/ums-$type-$params->{date}.csv", $csv )
           if $archive_dir;
-        say "ARCHIVE WRITTEN TO $archive_dir/ums-updates-$params->{date}.csv"
+        say "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
           if $archive_dir && $debug;
 
         my $email = Koha::Email->new(
@@ -419,7 +425,7 @@ sub run_update_report_and_clear_paid {
         $email->attach(
             Encode::encode_utf8($csv),
             content_type => "text/csv",
-            name         => "ums-updates-$params->{date}.csv",
+            name         => "ums-$type-$params->{date}.csv",
             disposition  => 'attachment',
         );
 
