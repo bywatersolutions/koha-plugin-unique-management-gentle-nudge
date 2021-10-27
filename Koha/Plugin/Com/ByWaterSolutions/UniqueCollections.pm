@@ -77,6 +77,7 @@ sub configure {
             cc_email          => $self->retrieve_data('cc_email'),
             collections_flag  => $self->retrieve_data('collections_flag'),
             fees_starting_age => $self->retrieve_data('fees_starting_age'),
+            fees_ending_age   => $self->retrieve_data('fees_ending_age'),
             auto_clear_paid   => $self->retrieve_data('auto_clear_paid'),
             add_restriction   => $self->retrieve_data('add_restriction'),
             attributes => scalar Koha::Patron::Attribute::Types->search(),
@@ -95,6 +96,7 @@ sub configure {
                 cc_email          => $cgi->param('cc_email'),
                 collections_flag  => $cgi->param('collections_flag'),
                 fees_starting_age => $cgi->param('fees_starting_age'),
+                fees_ending_age   => $cgi->param('fees_ending_age'),
                 auto_clear_paid   => $cgi->param('auto_clear_paid'),
                 add_restriction   => $cgi->param('add_restriction'),
             }
@@ -130,8 +132,14 @@ sub cronjob_nightly {
     $params->{processing_fee}    = $self->retrieve_data('processing_fee');
     $params->{collections_flag}  = $self->retrieve_data('collections_flag');
     $params->{fees_starting_age} = $self->retrieve_data('fees_starting_age');
+    $params->{fees_ending_age}   = $self->retrieve_data('fees_ending_age');
     $params->{auto_clear_paid}   = $self->retrieve_data('auto_clear_paid');
     $params->{add_restriction}   = $self->retrieve_data('add_restriction');
+
+    # Starting age should be the large of the two numbers
+    ( $params->{fees_starting_age}, $params->{fees_ending_age} ) =
+      ( $params->{fees_ending_age}, $params->{fees_starting_age} )
+      if $params->{fees_starting_age} < $params->{fees_ending_age};
 
     $params->{flag_type} =
          $params->{collections_flag} eq 'sort1'
@@ -210,7 +218,8 @@ FROM   accountlines
                         FROM   accountlines
                         GROUP  BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
                 WHERE  1=1
-                AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
+                AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
+                AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
         };
 
     $ums_submission_query .= qq{
@@ -469,7 +478,8 @@ sub install() {
             run_on_dow        => "0",
             fees_threshold    => "25.00",
             processing_fee    => "10.00",
-            fees_starting_age => "45",
+            fees_starting_age => "60",
+            fees_ending_age   => "90",
         }
     );
 
