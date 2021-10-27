@@ -307,9 +307,8 @@ FROM   accountlines
         push( @ums_new_submissions, $r );
     }
 
-## Email the results
-    if (@ums_new_submissions) {
-        my $csv = Text::CSV::Slurp->create( input => \@ums_new_submissions );
+        ## Email the results
+        my $csv = @ums_new_submissions ? Text::CSV::Slurp->create( input => \@ums_new_submissions );
         say "CSV:\n" . $csv if $debug >= 2;
 
         write_file( "$archive_dir/ums-new-submissions-$params->{date}.csv",
@@ -344,10 +343,6 @@ FROM   accountlines
         catch {
             warn "Mail not sent: $_";
         };
-    }
-    else {
-        say "NO NEW SUBMISSIONS TO SUBMIT\n\n" if $debug >= 1;
-    }
 }
 
 sub run_update_report_and_clear_paid {
@@ -401,11 +396,10 @@ sub run_update_report_and_clear_paid {
           if $params->{auto_clear_paid} eq 'yes' && $r->{Due} eq "0.00";
     }
 
-    if (@ums_updates) {
-## Email the results
+        ## Email the results
         my $type = $params->{send_sync_report} ? 'sync' : 'updates';
 
-        my $csv = Text::CSV::Slurp->create( input => \@ums_updates );
+        my $csv = @ums_updates ? Text::CSV::Slurp->create( input => \@ums_updates ) : 'No qualifying records';
         say "CSV:\n" . $csv if $debug >= 2;
 
         write_file( "$archive_dir/ums-$type-$params->{date}.csv", $csv )
@@ -438,10 +432,6 @@ sub run_update_report_and_clear_paid {
         catch {
             warn "Mail not sent: $_";
         };
-    }
-    else {
-        say "NO UPDATES TO SUBMIT\n\n" if $debug >= 1;
-    }
 }
 
 sub clear_patron_from_collections {
