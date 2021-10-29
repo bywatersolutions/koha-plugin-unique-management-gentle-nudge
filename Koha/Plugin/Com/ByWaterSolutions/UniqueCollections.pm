@@ -69,6 +69,9 @@ sub configure {
 
         if ( $cgi->param('sync') ) {
             $self->cronjob_nightly( { send_sync_report => 1 } );
+            $template->param(
+                sync_report_ran => 1,
+            );
         }
 
         ## Grab the values we already have for our settings, if any exist
@@ -385,7 +388,7 @@ sub run_update_report_and_clear_paid {
             ORDER  BY borrowers.surname ASC  
     };
 
-    say "UMS UPDATE QUERY:\n$ums_update_query" if $debug >= 0;
+    say "UMS UPDATE QUERY:\n$ums_update_query" if (!$params->{send_sync_report}) && $debug >= 0;
 
     $sth = $dbh->prepare($ums_update_query);
     $sth->execute();
