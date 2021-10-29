@@ -21,8 +21,8 @@ use Try::Tiny;
 ## Here we set our plugin version
 our $VERSION         = "{VERSION}";
 our $MINIMUM_VERSION = "{MINIMUM_VERSION}";
-our $debug           = $ENV{UMS_COLLECTIONS_DEBUG}        // 0;
-our $no_email        = $ENV{UMS_COLLECTIONS_NO_EMAIL}     // 0;
+our $debug           = $ENV{UMS_COLLECTIONS_DEBUG} // 0;
+our $no_email        = $ENV{UMS_COLLECTIONS_NO_EMAIL} // 0;
 our $archive_dir     = $ENV{UMS_COLLECTIONS_ARCHIVES_DIR} // undef;
 
 our $metadata = {
@@ -33,7 +33,7 @@ our $metadata = {
     minimum_version => $MINIMUM_VERSION,
     maximum_version => undef,
     version         => $VERSION,
-    description     =>
+    description =>
 'Plugin to forward messages to Unique Collections for processing and sending',
 };
 
@@ -69,9 +69,7 @@ sub configure {
 
         if ( $cgi->param('sync') ) {
             $self->cronjob_nightly( { send_sync_report => 1 } );
-            $template->param(
-                sync_report_ran => 1,
-            );
+            $template->param( sync_report_ran => 1, );
         }
 
         ## Grab the values we already have for our settings, if any exist
@@ -158,7 +156,7 @@ sub cronjob_nightly {
     $params->{categorycodes} = \@categorycodes;
 
     $params->{from} = C4::Context->preference('KohaAdminEmailAddress');
-    $params->{to}   = $cc_email ? "$unique_email,$cc_email" : $unique_email;
+    $params->{to} = $cc_email ? "$unique_email,$cc_email" : $unique_email;
 
     my $today = dt_from_string();
     $params->{date} = $today->ymd();
@@ -312,8 +310,8 @@ FROM   accountlines
     ## Email the results
     my $csv =
       @ums_new_submissions
-    ? Text::CSV::Slurp->create( input => \@ums_new_submissions )
-    : 'No qualifying records';
+      ? Text::CSV::Slurp->create( input => \@ums_new_submissions )
+      : 'No qualifying records';
     say "CSV:\n" . $csv if $debug >= 2;
 
     write_file( "$archive_dir/ums-new-submissions-$params->{date}.csv", $csv )
@@ -387,7 +385,8 @@ sub run_update_report_and_clear_paid {
             ORDER  BY borrowers.surname ASC  
     };
 
-    say "UMS UPDATE QUERY:\n$ums_update_query" if (!$params->{send_sync_report}) && $debug >= 0;
+    say "UMS UPDATE QUERY:\n$ums_update_query"
+      if ( !$params->{send_sync_report} ) && $debug >= 0;
 
     $sth = $dbh->prepare($ums_update_query);
     $sth->execute();
@@ -403,66 +402,66 @@ sub run_update_report_and_clear_paid {
     ## Email the results
     my $type = $params->{send_sync_report} ? 'sync' : 'updates';
 
-        my $csv =
-          @ums_updates
-        ? Text::CSV::Slurp->create( input => \@ums_updates )
-        : 'No qualifying records';
-        say "CSV:\n" . $csv if $debug >= 2;
+    my $csv =
+      @ums_updates
+      ? Text::CSV::Slurp->create( input => \@ums_updates )
+      : 'No qualifying records';
+    say "CSV:\n" . $csv if $debug >= 2;
 
-        write_file( "$archive_dir/ums-$type-$params->{date}.csv", $csv )
-          if $archive_dir;
-        say "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
-          if $archive_dir && $debug;
+    write_file( "$archive_dir/ums-$type-$params->{date}.csv", $csv )
+      if $archive_dir;
+    say "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
+      if $archive_dir && $debug;
 
-        my $email = Koha::Email->new(
-              {
-                  to      => $params->{to},
-                  from    => $params->{from},
-                  subject => "UMS Update Report for "
-                    . C4::Context->preference('LibraryName'),
-              }
+    my $email = Koha::Email->new(
+        {
+            to      => $params->{to},
+            from    => $params->{from},
+            subject => "UMS Update Report for "
+              . C4::Context->preference('LibraryName'),
+        }
+    );
+
+    $email->attach(
+        Encode::encode_utf8($csv),
+        content_type => "text/csv",
+        name         => "ums-$type-$params->{date}.csv",
+        disposition  => 'attachment',
+    );
+
+    my $smtp_server = Koha::SMTP::Servers->get_default;
+    $email->transport( $smtp_server->transport );
+
+    try {
+        $email->send_or_die unless $no_email;
+    }
+    catch {
+        warn "Mail not sent: $_";
+    };
+}
+
+sub clear_patron_from_collections {
+    my ( $self, $params, $borrowernumber ) = @_;
+
+    say "CLEARING PATRON $borrowernumber FROM COLLECTIONS" if $debug >= 2;
+
+    my $patron = Koha::Patrons->find($borrowernumber);
+    next unless $patron;
+
+    if ( $params->{flag_type} eq 'borrower_field' ) {
+        $patron->update( { $params->{collections_flag} => 'no' } );
+    }
+    if ( $params->{flag_type} eq 'attribute_field' ) {
+        my $a = Koha::Patron::Attributes->find(
+            {
+                borrowernumber => $patron->id,
+                code           => $params->{collections_flag},
+            }
         );
 
-        $email->attach(
-              Encode::encode_utf8($csv),
-              content_type => "text/csv",
-              name         => "ums-$type-$params->{date}.csv",
-              disposition  => 'attachment',
-        );
-
-        my $smtp_server = Koha::SMTP::Servers->get_default;
-        $email->transport( $smtp_server->transport );
-
-        try {
-              $email->send_or_die unless $no_email;
-        }
-        catch {
-              warn "Mail not sent: $_";
-        };
+        $a->attribute(0)->store() if $a;
     }
-
-    sub clear_patron_from_collections {
-          my ( $self, $params, $borrowernumber ) = @_;
-
-          say "CLEARING PATRON $borrowernumber FROM COLLECTIONS" if $debug >= 2;
-
-          my $patron = Koha::Patrons->find($borrowernumber);
-          next unless $patron;
-
-          if ( $params->{flag_type} eq 'borrower_field' ) {
-              $patron->update( { $params->{collections_flag} => 'no' } );
-          }
-          if ( $params->{flag_type} eq 'attribute_field' ) {
-              my $a = Koha::Patron::Attributes->find(
-                  {
-                      borrowernumber => $patron->id,
-                      code           => $params->{collections_flag},
-                  }
-              );
-
-              $a->attribute(0)->store() if $a;
-        }
-    }
+}
 
 =head3 install
 
@@ -473,21 +472,21 @@ or false if it failed.
 
 =cut
 
-    sub install() {
-          my ( $self, $args ) = @_;
+sub install() {
+    my ( $self, $args ) = @_;
 
-          $self->store_data(
-              {
-                  run_on_dow        => "0",
-                  fees_threshold    => "25.00",
-                  processing_fee    => "10.00",
-                  fees_starting_age => "60",
-                  fees_ending_age   => "90",
-              }
-          );
+    $self->store_data(
+        {
+            run_on_dow        => "0",
+            fees_threshold    => "25.00",
+            processing_fee    => "10.00",
+            fees_starting_age => "60",
+            fees_ending_age   => "90",
+        }
+    );
 
-          return 1;
-    }
+    return 1;
+}
 
 =head3 upgrade
 
@@ -496,11 +495,11 @@ plugin is installed over an existing older version of a plugin
 
 =cut
 
-    sub upgrade {
-          my ( $self, $args ) = @_;
+sub upgrade {
+    my ( $self, $args ) = @_;
 
-          return 1;
-    }
+    return 1;
+}
 
 =head3 uninstall
 
@@ -510,10 +509,10 @@ after ourselves!
 
 =cut
 
-    sub uninstall() {
-          my ( $self, $args ) = @_;
+sub uninstall() {
+    my ( $self, $args ) = @_;
 
-          return 1;
-    }
+    return 1;
+}
 
-    1;
+1;
