@@ -308,8 +308,10 @@ FROM   accountlines
     }
 
     ## Email the results
-    my $csv = @ums_new_submissions
-      ? Text::CSV::Slurp->create( input => \@ums_new_submissions );
+    my $csv =
+      @ums_new_submissions
+    ? Text::CSV::Slurp->create( input => \@ums_new_submissions )
+    : 'No qualifying records';
     say "CSV:\n" . $csv if $debug >= 2;
 
     write_file( "$archive_dir/ums-new-submissions-$params->{date}.csv", $csv )
