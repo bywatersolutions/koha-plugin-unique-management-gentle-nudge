@@ -190,7 +190,6 @@ MAX(attribute),
     } if $params->{flag_type} eq 'attribute_field';
 
     $ums_submission_query .= q{
-CONCAT ('<a href=\"/cgi-bin/koha/members/maninvoice.pl?borrowernumber=', borrowers.borrowernumber, '\" target="_blank">', MAX(borrowers.cardnumber), '</a>') AS "Link to Fines",
 MAX(borrowers.borrowernumber)     AS "borrowernumber",
 MAX(borrowers.surname)            AS "surname",
 MAX(borrowers.firstname)          AS "firstname",
@@ -230,7 +229,7 @@ FROM   accountlines
         };
 
     $ums_submission_query .= qq{
-            AND borrowers.$params->{collections_flag} != 'yes'
+            AND ( borrowers.$params->{collections_flag} != 'yes' OR borrowers.$params->{collections_flag} IS NULL )
         } if $params->{flag_type} eq 'borrower_field';
 
     $ums_submission_query .= q{
