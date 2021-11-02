@@ -26,7 +26,7 @@ our $no_email        = $ENV{UMS_COLLECTIONS_NO_EMAIL} // 0;
 our $archive_dir     = $ENV{UMS_COLLECTIONS_ARCHIVES_DIR} // undef;
 
 our $metadata = {
-    name            => 'Unique Management Services - Collections',
+    name            => 'Unique Management Services - Gentle Nudge',
     author          => 'Kyle M Hall',
     date_authored   => '2021-09-27',
     date_updated    => "1900-01-01",
