@@ -38,10 +38,6 @@ our $metadata = {
 'Plugin to forward messages to Unique Collections for processing and sending',
 };
 
-if ( $archive_dir && !-d $archive_dir ) {
-    make_path $archive_dir or die "Failed to create path: $archive_dir";
-}
-
 =head3 new
 
 =cut
@@ -121,6 +117,44 @@ sub configure {
 
 sub cronjob_nightly {
     my ( $self, $p ) = @_;
+
+    # Clear up archives older than 30 days
+    if ($archive_dir) {
+        if ( -d $archive_dir ) {
+            my $dt = dt_from_string();
+            $dt->subtract( days => 30 );
+            my $age_threshold = $dt->ymd;
+            opendir my $dir, $archive_dir or die "Cannot open directory: $!";
+            my @files = readdir $dir;
+            closedir $dir;
+
+            my $thresholds = {
+                new_submissions => "ums-new-submissions-$age_threshold.csv",
+                sync            => "ums-sync-$age_threshold.csv",
+                updates         => "ums-supdates-$age_threshold.csv",
+            };
+
+            foreach my $f (@files) {
+                next unless $f =~ /csv$/;
+
+                $threshold_filename =
+                  $f =~ /^ums-new-submissions/ ? $thresholds->{new_submissions}
+                  : $f =~ /^ums-sync/          ? $thresholds->{sync}
+                  : $f =~ /^ums-updates/       ? $thresholds->{updates}
+                  :                              undef;
+
+                next unless $threshold_filename;
+
+                if ( $f lt $threshold_filename ) {
+                    unlink( $archive_dir . "/" . $f );
+                }
+            }
+        }
+        else {
+            make_path $archive_dir or die "Failed to create path: $archive_dir";
+        }
+    }
+
 
     my $run_weeklys;
     my $run_on_dow = $self->retrieve_data('run_on_dow');
