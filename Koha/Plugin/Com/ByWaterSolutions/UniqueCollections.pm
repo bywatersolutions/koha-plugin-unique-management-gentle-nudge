@@ -14,6 +14,7 @@ use Koha::Patron::Attribute::Types;
 use Koha::Patron::Debarments;
 use Koha::Patrons;
 
+use File::Path qw( make_path );
 use File::Slurp;
 use Text::CSV::Slurp;
 use Try::Tiny;
@@ -36,6 +37,10 @@ our $metadata = {
     description =>
 'Plugin to forward messages to Unique Collections for processing and sending',
 };
+
+unless ( -d $archive_dir ) {
+    make_path $archive_dir or die "Failed to create path: $archive_dir";
+}
 
 =head3 new
 
