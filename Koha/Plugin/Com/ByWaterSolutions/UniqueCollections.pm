@@ -38,7 +38,7 @@ our $metadata = {
 'Plugin to forward messages to Unique Collections for processing and sending',
 };
 
-unless ( -d $archive_dir ) {
+if ( $archive_dir && !-d $archive_dir ) {
     make_path $archive_dir or die "Failed to create path: $archive_dir";
 }
 
