@@ -137,7 +137,7 @@ sub cronjob_nightly {
             foreach my $f (@files) {
                 next unless $f =~ /csv$/;
 
-                $threshold_filename =
+                my $threshold_filename =
                   $f =~ /^ums-new-submissions/ ? $thresholds->{new_submissions}
                   : $f =~ /^ums-sync/          ? $thresholds->{sync}
                   : $f =~ /^ums-updates/       ? $thresholds->{updates}
