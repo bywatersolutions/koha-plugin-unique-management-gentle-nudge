@@ -457,8 +457,8 @@ sub run_update_report_and_clear_paid {
         {
             to      => $params->{to},
             from    => $params->{from},
-            subject => "UMS Update Report for "
-              . C4::Context->preference('LibraryName'),
+            subject => sprintf( "UMS %s for %s",
+                ucfirst($type), C4::Context->preference('LibraryName') ),
         }
     );
 
