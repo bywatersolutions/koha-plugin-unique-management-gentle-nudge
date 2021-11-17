@@ -234,6 +234,7 @@ MAX(borrowers.firstname)          AS "firstname",
 MAX(borrowers.address)            AS "address",
 MAX(borrowers.city)               AS "city",
 MAX(borrowers.zipcode)            AS "zipcode",
+MAX(borrowers.state)              AS "state",
 MAX(borrowers.phone)              AS "phone",
 MAX(borrowers.mobile)             AS "mobile",
 MAX(borrowers.phonepro)           AS "Alt Ph 1",
@@ -244,7 +245,8 @@ MAX(borrowers.dateofbirth),
 MAX(accountlines.date)            AS "Most recent charge",
 FORMAT(Sum(amountoutstanding), 2) AS Amt_In_Range,
 MAX(sub.due)                      AS Total_Due,
-MAX(sub.dueplus)                  AS Total_Plus_Fee
+MAX(sub.dueplus)                  AS Total_Plus_Fee,
+MAX(borrowers.email)
 FROM   accountlines
     };
 
