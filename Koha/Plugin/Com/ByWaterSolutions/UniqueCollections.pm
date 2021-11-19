@@ -195,8 +195,8 @@ sub cronjob_nightly {
     $params->{categorycodes} = \@categorycodes;
 
     $params->{from} = C4::Context->preference('KohaAdminEmailAddress');
-    $params->{to}   = [$unique_email];
-    $params->{cc}   = [$cc_email] if $cc_email;
+    $params->{to}   = $unique_email;
+    $params->{cc}   = $cc_email if $cc_email;
 
     my $today = dt_from_string();
     $params->{date} = $today->ymd();
