@@ -228,6 +228,7 @@ MAX(attribute),
     } if $params->{flag_type} eq 'attribute_field';
 
     $ums_submission_query .= q{
+MAX(borrowers.cardnumber)         AS "cardnumber",
 MAX(borrowers.borrowernumber)     AS "borrowernumber",
 MAX(borrowers.surname)            AS "surname",
 MAX(borrowers.firstname)          AS "firstname",
@@ -396,7 +397,8 @@ sub run_update_report_and_clear_paid {
     my $sth;
 
     my $ums_update_query = q{
-        SELECT borrowers.borrowernumber,
+        SELECT borrowers.cardnumber,
+               borrowers.borrowernumber,
                MAX(borrowers.surname)                         AS "surname",
                MAX(borrowers.firstname)                       AS "firstname",
                FORMAT(Sum(accountlines.amountoutstanding), 2) AS "Due"
