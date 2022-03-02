@@ -131,7 +131,7 @@ sub cronjob_nightly {
             my $thresholds = {
                 new_submissions => "ums-new-submissions-$age_threshold.csv",
                 sync            => "ums-sync-$age_threshold.csv",
-                updates         => "ums-supdates-$age_threshold.csv",
+                updates         => "ums-updates-$age_threshold.csv",
             };
 
             foreach my $f (@files) {
