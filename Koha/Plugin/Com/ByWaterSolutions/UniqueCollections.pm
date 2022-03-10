@@ -80,7 +80,6 @@ sub configure {
             fees_threshold    => $self->retrieve_data('fees_threshold'),
             processing_fee    => $self->retrieve_data('processing_fee'),
             unique_email      => $self->retrieve_data('unique_email'),
-            cc_email          => $self->retrieve_data('cc_email'),
             collections_flag  => $self->retrieve_data('collections_flag'),
             fees_starting_age => $self->retrieve_data('fees_starting_age') || 60,
             fees_ending_age   => $self->retrieve_data('fees_ending_age') || 90,
@@ -99,7 +98,6 @@ sub configure {
                 fees_threshold    => $cgi->param('fees_threshold'),
                 processing_fee    => $cgi->param('processing_fee'),
                 unique_email      => $cgi->param('unique_email'),
-                cc_email          => $cgi->param('cc_email'),
                 collections_flag  => $cgi->param('collections_flag'),
                 fees_starting_age => $cgi->param('fees_starting_age'),
                 fees_ending_age   => $cgi->param('fees_ending_age'),
@@ -170,7 +168,6 @@ sub cronjob_nightly {
     my $params = { send_sync_report => $p->{send_sync_report} };
 
     my $unique_email = $self->retrieve_data('unique_email');
-    my $cc_email     = $self->retrieve_data('cc_email');
 
     $params->{fees_threshold}    = $self->retrieve_data('fees_threshold');
     $params->{processing_fee}    = $self->retrieve_data('processing_fee');
@@ -196,7 +193,6 @@ sub cronjob_nightly {
 
     $params->{from} = C4::Context->preference('KohaAdminEmailAddress');
     $params->{to}   = $unique_email;
-    $params->{cc}   = $cc_email if $cc_email;
 
     my $today = dt_from_string();
     $params->{date} = $today->ymd();
