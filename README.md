@@ -16,8 +16,6 @@ The plugin will automatically flag patrons who meet specific requirements as bei
 
 ## How to set up the plugin:
 
-The library will need to download and install the following plugin from the ByWater Github repository: koha-plugin-unique-management-gentle-nudge
-
 ### Downloading
 
 From the [release page](https://github.com/bywatersolutions/koha-plugin-unique-collections/releases) you can download the latest release in `kpz` format.
