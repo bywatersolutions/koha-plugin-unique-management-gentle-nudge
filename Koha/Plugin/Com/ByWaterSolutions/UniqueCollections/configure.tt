@@ -88,6 +88,12 @@
           </div>
 
           <div class="form-group">
+            <label for="cc_email">Additional email address</label>
+            <input type="text" name="cc_email" class="form-control" value="[% cc_email %]">
+            <span class="help-block">If you would like to send the report to another email address as well, enter it here.</span>
+          </div>
+
+          <div class="form-group">
             <label for="collections_flag">Collections flag</label>
             <select name="collections_flag" class="form-control">
               <option value="sort1" [% IF collections_flag == "sort1" %]selected="selected"[% END %]>sort1</option>
