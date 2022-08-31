@@ -11,7 +11,7 @@ use C4::Auth;
 use C4::Context;
 use Koha::DateUtils qw(dt_from_string);
 use Koha::Patron::Attribute::Types;
-use Koha::Patron::Debarments;
+use Koha::Patron::Debarments qw(AddDebarment);
 use Koha::Patrons;
 
 use File::Path qw( make_path );
