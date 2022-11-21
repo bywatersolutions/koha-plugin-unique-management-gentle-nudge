@@ -503,7 +503,18 @@ sub clear_patron_from_collections {
             }
         );
 
-        $a->attribute(0)->store() if $a;
+        # At the time of this writing it is not possible to update a repeatable
+        # attribute. Instead, it must be deleted and recreated.
+        if ($a) {
+            my $schema = Koha::Database->schema;
+            $schema->txn_do(
+                sub {
+                    $a->delete();
+                    $a->attribute(0);
+                    Koha::Patron::Attribute->new( $a->unblessed )->store();
+                }
+            );
+        }
     }
 }
 
