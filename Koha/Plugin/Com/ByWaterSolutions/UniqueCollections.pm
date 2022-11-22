@@ -170,7 +170,6 @@ sub cronjob_nightly {
     my $params = { send_sync_report => $p->{send_sync_report} };
 
     my $unique_email = $self->retrieve_data('unique_email');
-    my $cc_email     = $self->retrieve_data('cc_email');
 
     $params->{fees_threshold}    = $self->retrieve_data('fees_threshold');
     $params->{processing_fee}    = $self->retrieve_data('processing_fee');
@@ -196,7 +195,6 @@ sub cronjob_nightly {
 
     $params->{from} = C4::Context->preference('KohaAdminEmailAddress');
     $params->{to}   = $unique_email;
-    $params->{cc}   = $cc_email if $cc_email;
 
     my $today = dt_from_string();
     $params->{date} = $today->ymd();
@@ -363,14 +361,15 @@ FROM   accountlines
       "ARCHIVE WRITTEN TO $archive_dir/ums-new-submissions-$params->{date}.csv"
       if $archive_dir && $debug;
 
-    my $email = Koha::Email->new(
-        {
-            to      => $params->{to},
-            from    => $params->{from},
-            subject => "UMS New Submissions for "
-              . C4::Context->preference('LibraryName'),
-        }
-    );
+    my $cc_email = $self->retrieve_data('cc_email');
+    my $p        = {
+        to      => $params->{to},
+        from    => $params->{from},
+        subject => "UMS New Submissions for "
+          . C4::Context->preference('LibraryName'),
+    };
+    $p->{cc} = $cc_email if $cc_email;
+    my $email = Koha::Email->new($p);
 
     $email->attach(
         Encode::encode_utf8($csv),
@@ -457,14 +456,15 @@ sub run_update_report_and_clear_paid {
     say "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
       if $archive_dir && $debug;
 
-    my $email = Koha::Email->new(
-        {
-            to      => $params->{to},
-            from    => $params->{from},
-            subject => sprintf( "UMS %s for %s",
-                ucfirst($type), C4::Context->preference('LibraryName') ),
-        }
-    );
+    my $cc_email = $self->retrieve_data('cc_email');
+    my $p        = {
+        to      => $params->{to},
+        from    => $params->{from},
+        subject => sprintf( "UMS %s for %s",
+            ucfirst($type), C4::Context->preference('LibraryName') ),
+    };
+    $p->{cc} = $cc_email if $cc_email;
+    my $email = Koha::Email->new($p);
 
     $email->attach(
         Encode::encode_utf8($csv),
