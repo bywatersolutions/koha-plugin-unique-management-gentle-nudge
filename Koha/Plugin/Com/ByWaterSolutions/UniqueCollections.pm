@@ -86,6 +86,9 @@ sub configure {
             fees_ending_age   => $self->retrieve_data('fees_ending_age') || 90,
             auto_clear_paid   => $self->retrieve_data('auto_clear_paid'),
             add_restriction   => $self->retrieve_data('add_restriction'),
+            host              => $self->retrieve_data('host'),
+            username          => $self->retrieve_data('username'),
+            password          => $self->retrieve_data('password'),
             attributes => scalar Koha::Patron::Attribute::Types->search(),
         );
 
@@ -105,6 +108,9 @@ sub configure {
                 fees_ending_age   => $cgi->param('fees_ending_age'),
                 auto_clear_paid   => $cgi->param('auto_clear_paid'),
                 add_restriction   => $cgi->param('add_restriction'),
+                host              => $cgi->param('host'),
+                username          => $cgi->param('username'),
+                password          => $cgi->param('password'),
             }
         );
         $self->go_home();
@@ -169,8 +175,6 @@ sub cronjob_nightly {
 
     my $params = { send_sync_report => $p->{send_sync_report} };
 
-    my $unique_email = $self->retrieve_data('unique_email');
-
     $params->{fees_threshold}    = $self->retrieve_data('fees_threshold');
     $params->{processing_fee}    = $self->retrieve_data('processing_fee');
     $params->{collections_flag}  = $self->retrieve_data('collections_flag');
@@ -192,9 +196,6 @@ sub cronjob_nightly {
 
     my @categorycodes = split( /,/, $self->retrieve_data('categorycodes') );
     $params->{categorycodes} = \@categorycodes;
-
-    $params->{from} = C4::Context->preference('KohaAdminEmailAddress');
-    $params->{to}   = $unique_email;
 
     my $today = dt_from_string();
     $params->{date} = $today->ymd();
@@ -355,38 +356,65 @@ FROM   accountlines
       : 'No qualifying records';
     say "CSV:\n" . $csv if $debug >= 2;
 
-    write_file( "$archive_dir/ums-new-submissions-$params->{date}.csv", $csv )
-      if $archive_dir;
-    say
-      "ARCHIVE WRITTEN TO $archive_dir/ums-new-submissions-$params->{date}.csv"
-      if $archive_dir && $debug;
+    $archive_dir ||= "/tmp";
 
-    my $cc_email = $self->retrieve_data('cc_email');
-    my $p        = {
-        to      => $params->{to},
-        from    => $params->{from},
-        subject => "UMS New Submissions for "
-          . C4::Context->preference('LibraryName'),
-    };
-    $p->{cc} = $cc_email if $cc_email;
-    my $email = Koha::Email->new($p);
+    my $filename = "ums-new-submissions-$params->{date}.csv";
+    my $file_path = "$archive_dir/$filename";
 
-    $email->attach(
-        Encode::encode_utf8($csv),
-        content_type => "text/csv",
-        name         => "ums-new-submissions-$params->{date}.csv",
-        disposition  => 'attachment',
-    );
+    write_file( $file_path, $csv );
+    say "ARCHIVE WRITTEN TO $file_path" if $debug;
 
-    my $smtp_server = Koha::SMTP::Servers->get_default;
-    $email->transport( $smtp_server->transport );
+    my $sftp_host      = $self->retrieve_data('host');
+    my $sftp_username  = $self->retrieve_data('username');
+    my $sftp_password  = $self->retrieve_data('password');
 
-    try {
-        $email->send_or_die unless $no_email;
+    my $email_to   = $self->retrieve_data('unique_email');
+    my $email_from = C4::Context->preference('KohaAdminEmailAddress');
+    my $email_cc   = $self->retrieve_data('cc_email');
+
+    if ( $sftp_host ) {
+        my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'cust2unique';
+
+        my $sftp = Net::SFTP::Foreign->new(
+            host     => $sftp_host,
+            user     => $sftp_username,
+            port     => 22,
+            password => $sftp_password
+        );
+        $sftp->die_on_error("Unable to establish SFTP connection");
+        $sftp->setcwd($directory)
+          or die "unable to change cwd: " . $sftp->error;
+        $sftp->put( $file_path, $filename )
+          or die "put failed: " . $sftp->error;
     }
-    catch {
-        warn "Mail not sent: $_";
-    };
+
+    if ( $email_to ) {
+        my $p        = {
+            to      => $email_to,
+            from    => $email_from,
+            subject => "UMS New Submissions for "
+              . C4::Context->preference('LibraryName'),
+        };
+        $p->{cc} = $email_cc if $email_cc;
+        my $email = Koha::Email->new($p);
+
+        $email->attach(
+            Encode::encode_utf8($csv),
+            content_type => "text/csv",
+            name         => "ums-new-submissions-$params->{date}.csv",
+            disposition  => 'attachment',
+        );
+
+        my $smtp_server = Koha::SMTP::Servers->get_default;
+        $email->transport( $smtp_server->transport );
+
+        try {
+            $email->send_or_die unless $no_email;
+        }
+        catch {
+            warn "Mail not sent: $_";
+        };
+    }
 }
 
 sub run_update_report_and_clear_paid {
