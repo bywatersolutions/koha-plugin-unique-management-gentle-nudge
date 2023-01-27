@@ -269,7 +269,7 @@ FROM   accountlines
         };
 
     $ums_submission_query .= qq{
-            AND ( borrowers.$params->{collections_flag} = 'no' OR borrowers.$params->{collections_flag} IS NULL )
+            AND ( borrowers.$params->{collections_flag} = 'no' OR borrowers.$params->{collections_flag} IS NULL OR borrowers.$params->{collections_flag} = "" )
         } if $params->{flag_type} eq 'borrower_field';
 
     $ums_submission_query .= q{
