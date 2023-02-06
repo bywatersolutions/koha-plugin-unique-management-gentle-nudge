@@ -388,14 +388,15 @@ FROM   accountlines
           or die "put failed: " . $sftp->error;
     }
 
-    if ( $email_to ) {
+    foreach my $email_address ( $email_to, $email_cc ) {
+        next unless $email_address;
+
         my $p        = {
-            to      => $email_to,
+            to      => $email_address,
             from    => $email_from,
             subject => "UMS New Submissions for "
               . C4::Context->preference('LibraryName'),
         };
-        $p->{cc} = $email_cc if $email_cc;
         my $email = Koha::Email->new($p);
 
         $email->attach(
