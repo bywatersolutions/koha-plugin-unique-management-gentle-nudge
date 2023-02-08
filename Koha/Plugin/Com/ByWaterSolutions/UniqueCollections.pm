@@ -9,6 +9,7 @@ use base qw(Koha::Plugins::Base);
 ## We will also need to include any Koha libraries we want to access
 use C4::Auth;
 use C4::Context;
+use C4::Log qw(logaction);
 use Koha::DateUtils qw(dt_from_string);
 use Koha::Patron::Attribute::Types;
 use Koha::Patron::Debarments qw(AddDebarment);
@@ -16,6 +17,7 @@ use Koha::Patrons;
 
 use File::Path qw( make_path );
 use File::Slurp;
+use JSON;
 use Text::CSV::Slurp;
 use Try::Tiny;
 
@@ -372,7 +374,16 @@ FROM   accountlines
     my $email_from = C4::Context->preference('KohaAdminEmailAddress');
     my $email_cc   = $self->retrieve_data('cc_email');
 
+    my $info = {
+        count     => scalar @ums_new_submissions,
+        filename  => $filename,
+        file_path => $file_path,
+    };
+
     if ( $sftp_host ) {
+        $info->{sftp_host} = $sftp_host;
+        $info->{sftp_username} = $sftp_username;
+
         my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'cust2unique';
 
         my $sftp = Net::SFTP::Foreign->new(
@@ -381,15 +392,23 @@ FROM   accountlines
             port     => 22,
             password => $sftp_password
         );
-        $sftp->die_on_error("Unable to establish SFTP connection");
-        $sftp->setcwd($directory)
-          or die "unable to change cwd: " . $sftp->error;
-        $sftp->put( $file_path, $filename )
-          or die "put failed: " . $sftp->error;
+
+        try {
+            $sftp->die_on_error("Unable to establish SFTP connection");
+            $sftp->setcwd($directory)
+              or die "unable to change cwd: " . $sftp->error;
+            $sftp->put( $file_path, $filename )
+              or die "put failed: " . $sftp->error;
+        } catch {
+            $info->{sftp_failed} = 'true';
+            $info->{sftp_error}  = $_;
+        }
     }
 
     foreach my $email_address ( $email_to, $email_cc ) {
-        next unless $email_address;
+        $info->{email_to} = $email_to;
+        $info->{email_cc} = $email_cc;
+        $info->{email_from} = $email_from;
 
         my $p        = {
             to      => $email_address,
@@ -413,9 +432,15 @@ FROM   accountlines
             $email->send_or_die unless $no_email;
         }
         catch {
+            $info->{email_failed}  = 'true';
+            $info->{email_address} = $email_address;
+            $info->{email_error}   = $_;
+
             warn "Mail not sent: $_";
         };
     }
+
+    logaction('GENTLENUDGE', 'NEW_SUBMISSIONS', undef, JSON->new->pretty->encode($info), 'cron');
 }
 
 sub run_update_report_and_clear_paid {
@@ -474,43 +499,92 @@ sub run_update_report_and_clear_paid {
     ## Email the results
     my $type = $params->{send_sync_report} ? 'sync' : 'updates';
 
+    my $filename = "ums-$type-$params->{date}.csv";
+    my $file_path = "$archive_dir/$filename";
+
+    my $info = {
+        count     => scalar @ums_updates,
+        type      => $type,
+        filename  => $filename,
+        file_path => $file_path,
+    };
+
     my $csv =
       @ums_updates
       ? Text::CSV::Slurp->create( input => \@ums_updates )
       : 'No qualifying records';
     say "CSV:\n" . $csv if $debug >= 2;
 
-    write_file( "$archive_dir/ums-$type-$params->{date}.csv", $csv )
+    write_file( $file_path, $csv )
       if $archive_dir;
     say "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
       if $archive_dir && $debug;
 
-    my $cc_email = $self->retrieve_data('cc_email');
-    my $p        = {
-        to      => $params->{to},
-        from    => $params->{from},
-        subject => sprintf( "UMS %s for %s",
-            ucfirst($type), C4::Context->preference('LibraryName') ),
-    };
-    $p->{cc} = $cc_email if $cc_email;
-    my $email = Koha::Email->new($p);
+    my $sftp_host      = $self->retrieve_data('host');
+    my $sftp_username  = $self->retrieve_data('username');
+    my $sftp_password  = $self->retrieve_data('password');
 
-    $email->attach(
-        Encode::encode_utf8($csv),
-        content_type => "text/csv",
-        name         => "ums-$type-$params->{date}.csv",
-        disposition  => 'attachment',
-    );
+    my $email_to   = $self->retrieve_data('unique_email');
+    my $email_from = C4::Context->preference('KohaAdminEmailAddress');
+    my $email_cc   = $self->retrieve_data('cc_email');
 
-    my $smtp_server = Koha::SMTP::Servers->get_default;
-    $email->transport( $smtp_server->transport );
+    if ( $sftp_host ) {
+        $info->{sftp_host} = $sftp_host;
+        $info->{sftp_username} = $sftp_username;
 
-    try {
-        $email->send_or_die unless $no_email;
+        my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'cust2unique';
+
+        my $sftp = Net::SFTP::Foreign->new(
+            host     => $sftp_host,
+            user     => $sftp_username,
+            port     => 22,
+            password => $sftp_password
+        );
+
+        try {
+            $sftp->die_on_error("Unable to establish SFTP connection");
+            $sftp->setcwd($directory)
+              or die "unable to change cwd: " . $sftp->error;
+            $sftp->put( $file_path, $filename )
+              or die "put failed: " . $sftp->error;
+        } catch {
+            $info->{sftp_failed} = 'true';
+            $info->{sftp_error}  = $_;
+        }
     }
-    catch {
-        warn "Mail not sent: $_";
-    };
+
+    foreach my $email_address ( $email_to, $email_cc ) {
+        my $p        = {
+            to      => $email_address,
+            from    => $params->{from},
+            subject => sprintf( "UMS %s for %s",
+                ucfirst($type), C4::Context->preference('LibraryName') ),
+        };
+        my $email = Koha::Email->new($p);
+
+        $email->attach(
+            Encode::encode_utf8($csv),
+            content_type => "text/csv",
+            name         => $filename,
+            disposition  => 'attachment',
+        );
+
+        my $smtp_server = Koha::SMTP::Servers->get_default;
+        $email->transport( $smtp_server->transport );
+
+        try {
+            $email->send_or_die unless $no_email;
+        }
+        catch {
+            $info->{email_failed}  = 'true';
+            $info->{email_address} = $email_address;
+            $info->{email_error}   = $_;
+
+            warn "Mail not sent: $_";
+        };
+    }
+
+    logaction('GENTLENUDGE', uc($type), undef, JSON->new->pretty->encode($info), 'cron');
 }
 
 sub clear_patron_from_collections {
