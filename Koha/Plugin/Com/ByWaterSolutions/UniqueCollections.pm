@@ -264,7 +264,7 @@ FROM   accountlines
                         FORMAT(Sum(accountlines.amountoutstanding) + $params->{processing_fee}, 2) AS DuePlus,
                         borrowernumber
                         FROM   accountlines
-                        GROUP  BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
+                        GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
                 WHERE  1=1
                 AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
                 AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
@@ -286,9 +286,9 @@ FROM   accountlines
     }
 
     $ums_submission_query .= qq{
-            GROUP  BY borrowers.borrowernumber
+            GROUP BY borrowers.borrowernumber
                 HAVING Sum(amountoutstanding) >= $params->{fees_threshold}
-                ORDER  BY borrowers.surname ASC  
+                ORDER BY borrowers.surname ASC
         };
 
     say "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug >= 0;
@@ -421,6 +421,7 @@ FROM   accountlines
         $email->attach(
             Encode::encode_utf8($csv),
             content_type => "text/csv",
+            filename     => "ums-new-submissions-$params->{date}.csv",
             name         => "ums-new-submissions-$params->{date}.csv",
             disposition  => 'attachment',
         );
@@ -466,7 +467,7 @@ sub run_update_report_and_clear_paid {
     } if $params->{flag_type} eq 'attribute_field';
 
     $ums_update_query .= q{
-        WHERE  1=1 
+        WHERE  1=1
     };
 
     $ums_update_query .= qq{
@@ -478,8 +479,8 @@ sub run_update_report_and_clear_paid {
     } if $params->{flag_type} eq 'borrower_field';
 
     $ums_update_query .= q{
-        GROUP  BY borrowers.borrowernumber
-            ORDER  BY borrowers.surname ASC  
+        GROUP BY borrowers.borrowernumber
+            ORDER BY borrowers.surname ASC
     };
 
     say "UMS UPDATE QUERY:\n$ums_update_query"
@@ -499,6 +500,7 @@ sub run_update_report_and_clear_paid {
     ## Email the results
     my $type = $params->{send_sync_report} ? 'sync' : 'updates';
 
+    $archive_dir ||= "/tmp";
     my $filename = "ums-$type-$params->{date}.csv";
     my $file_path = "$archive_dir/$filename";
 
@@ -524,8 +526,8 @@ sub run_update_report_and_clear_paid {
     my $sftp_username  = $self->retrieve_data('username');
     my $sftp_password  = $self->retrieve_data('password');
 
-    my $email_to   = $self->retrieve_data('unique_email');
     my $email_from = C4::Context->preference('KohaAdminEmailAddress');
+    my $email_to   = $self->retrieve_data('unique_email');
     my $email_cc   = $self->retrieve_data('cc_email');
 
     if ( $sftp_host ) {
@@ -554,9 +556,10 @@ sub run_update_report_and_clear_paid {
     }
 
     foreach my $email_address ( $email_to, $email_cc ) {
+	next unless $email_address;
         my $p        = {
             to      => $email_address,
-            from    => $params->{from},
+            from    => $email_from,
             subject => sprintf( "UMS %s for %s",
                 ucfirst($type), C4::Context->preference('LibraryName') ),
         };
@@ -565,6 +568,7 @@ sub run_update_report_and_clear_paid {
         $email->attach(
             Encode::encode_utf8($csv),
             content_type => "text/csv",
+            filename     => $filename,
             name         => $filename,
             disposition  => 'attachment',
         );
