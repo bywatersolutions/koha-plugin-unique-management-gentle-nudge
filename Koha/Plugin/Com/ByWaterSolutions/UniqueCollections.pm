@@ -24,8 +24,8 @@ use Try::Tiny;
 ## Here we set our plugin version
 our $VERSION         = "{VERSION}";
 our $MINIMUM_VERSION = "{MINIMUM_VERSION}";
-our $debug           = $ENV{UMS_COLLECTIONS_DEBUG} // 0;
-our $no_email        = $ENV{UMS_COLLECTIONS_NO_EMAIL} // 0;
+our $debug           = $ENV{UMS_COLLECTIONS_DEBUG}        // 0;
+our $no_email        = $ENV{UMS_COLLECTIONS_NO_EMAIL}     // 0;
 our $archive_dir     = $ENV{UMS_COLLECTIONS_ARCHIVES_DIR} // undef;
 
 our $metadata = {
@@ -36,7 +36,7 @@ our $metadata = {
     minimum_version => $MINIMUM_VERSION,
     maximum_version => undef,
     version         => $VERSION,
-    description =>
+    description     =>
 'Plugin to forward messages to Unique Collections for processing and sending',
 };
 
@@ -84,14 +84,15 @@ sub configure {
             unique_email      => $self->retrieve_data('unique_email'),
             cc_email          => $self->retrieve_data('cc_email'),
             collections_flag  => $self->retrieve_data('collections_flag'),
-            fees_starting_age => $self->retrieve_data('fees_starting_age') || 60,
-            fees_ending_age   => $self->retrieve_data('fees_ending_age') || 90,
-            auto_clear_paid   => $self->retrieve_data('auto_clear_paid'),
-            add_restriction   => $self->retrieve_data('add_restriction'),
-            host              => $self->retrieve_data('host'),
-            username          => $self->retrieve_data('username'),
-            password          => $self->retrieve_data('password'),
-            attributes => scalar Koha::Patron::Attribute::Types->search(),
+            fees_starting_age => $self->retrieve_data('fees_starting_age')
+              || 60,
+            fees_ending_age => $self->retrieve_data('fees_ending_age') || 90,
+            auto_clear_paid => $self->retrieve_data('auto_clear_paid'),
+            add_restriction => $self->retrieve_data('add_restriction'),
+            host            => $self->retrieve_data('host'),
+            username        => $self->retrieve_data('username'),
+            password        => $self->retrieve_data('password'),
+            attributes      => scalar Koha::Patron::Attribute::Types->search(),
         );
 
         $self->output_html( $template->output() );
@@ -162,7 +163,6 @@ sub cronjob_nightly {
             make_path $archive_dir or die "Failed to create path: $archive_dir";
         }
     }
-
 
     my $run_weeklys;
     my $run_on_dow = $self->retrieve_data('run_on_dow');
@@ -360,15 +360,15 @@ FROM   accountlines
 
     $archive_dir ||= "/tmp";
 
-    my $filename = "ums-new-submissions-$params->{date}.csv";
+    my $filename  = "ums-new-submissions-$params->{date}.csv";
     my $file_path = "$archive_dir/$filename";
 
     write_file( $file_path, $csv );
     say "ARCHIVE WRITTEN TO $file_path" if $debug;
 
-    my $sftp_host      = $self->retrieve_data('host');
-    my $sftp_username  = $self->retrieve_data('username');
-    my $sftp_password  = $self->retrieve_data('password');
+    my $sftp_host     = $self->retrieve_data('host');
+    my $sftp_username = $self->retrieve_data('username');
+    my $sftp_password = $self->retrieve_data('password');
 
     my $email_to   = $self->retrieve_data('unique_email');
     my $email_from = C4::Context->preference('KohaAdminEmailAddress');
@@ -380,8 +380,8 @@ FROM   accountlines
         file_path => $file_path,
     };
 
-    if ( $sftp_host ) {
-        $info->{sftp_host} = $sftp_host;
+    if ($sftp_host) {
+        $info->{sftp_host}     = $sftp_host;
         $info->{sftp_username} = $sftp_username;
 
         my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'cust2unique';
@@ -399,18 +399,19 @@ FROM   accountlines
               or die "unable to change cwd: " . $sftp->error;
             $sftp->put( $file_path, $filename )
               or die "put failed: " . $sftp->error;
-        } catch {
+        }
+        catch {
             $info->{sftp_failed} = 'true';
             $info->{sftp_error}  = $_;
         }
     }
 
     foreach my $email_address ( $email_to, $email_cc ) {
-        $info->{email_to} = $email_to;
-        $info->{email_cc} = $email_cc;
+        $info->{email_to}   = $email_to;
+        $info->{email_cc}   = $email_cc;
         $info->{email_from} = $email_from;
 
-        my $p        = {
+        my $p = {
             to      => $email_address,
             from    => $email_from,
             subject => "UMS New Submissions for "
@@ -441,7 +442,8 @@ FROM   accountlines
         };
     }
 
-    logaction('GENTLENUDGE', 'NEW_SUBMISSIONS', undef, JSON->new->pretty->encode($info), 'cron');
+    logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS', undef,
+        JSON->new->pretty->encode($info), 'cron' );
 }
 
 sub run_update_report_and_clear_paid {
@@ -501,7 +503,7 @@ sub run_update_report_and_clear_paid {
     my $type = $params->{send_sync_report} ? 'sync' : 'updates';
 
     $archive_dir ||= "/tmp";
-    my $filename = "ums-$type-$params->{date}.csv";
+    my $filename  = "ums-$type-$params->{date}.csv";
     my $file_path = "$archive_dir/$filename";
 
     my $info = {
@@ -522,16 +524,16 @@ sub run_update_report_and_clear_paid {
     say "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
       if $archive_dir && $debug;
 
-    my $sftp_host      = $self->retrieve_data('host');
-    my $sftp_username  = $self->retrieve_data('username');
-    my $sftp_password  = $self->retrieve_data('password');
+    my $sftp_host     = $self->retrieve_data('host');
+    my $sftp_username = $self->retrieve_data('username');
+    my $sftp_password = $self->retrieve_data('password');
 
     my $email_from = C4::Context->preference('KohaAdminEmailAddress');
     my $email_to   = $self->retrieve_data('unique_email');
     my $email_cc   = $self->retrieve_data('cc_email');
 
-    if ( $sftp_host ) {
-        $info->{sftp_host} = $sftp_host;
+    if ($sftp_host) {
+        $info->{sftp_host}     = $sftp_host;
         $info->{sftp_username} = $sftp_username;
 
         my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'cust2unique';
@@ -549,15 +551,16 @@ sub run_update_report_and_clear_paid {
               or die "unable to change cwd: " . $sftp->error;
             $sftp->put( $file_path, $filename )
               or die "put failed: " . $sftp->error;
-        } catch {
+        }
+        catch {
             $info->{sftp_failed} = 'true';
             $info->{sftp_error}  = $_;
         }
     }
 
     foreach my $email_address ( $email_to, $email_cc ) {
-	next unless $email_address;
-        my $p        = {
+        next unless $email_address;
+        my $p = {
             to      => $email_address,
             from    => $email_from,
             subject => sprintf( "UMS %s for %s",
@@ -588,7 +591,8 @@ sub run_update_report_and_clear_paid {
         };
     }
 
-    logaction('GENTLENUDGE', uc($type), undef, JSON->new->pretty->encode($info), 'cron');
+    logaction( 'GENTLENUDGE', uc($type), undef,
+        JSON->new->pretty->encode($info), 'cron' );
 }
 
 sub clear_patron_from_collections {
