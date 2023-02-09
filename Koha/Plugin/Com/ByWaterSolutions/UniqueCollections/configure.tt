@@ -147,7 +147,7 @@
 
           <fieldset>
               <legend>SFTP Information</legend>
-              <span class="help-block">If SFTP host is set, plugin will upload files to the remote SFTP server</span<
+              <span class="help-block">If SFTP host is set, plugin will upload files to the remote SFTP server</span>
 
               <div class="form-group">
                 <label for="host">Host</label>
