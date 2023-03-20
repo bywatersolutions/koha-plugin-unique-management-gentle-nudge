@@ -407,8 +407,10 @@ FROM   accountlines
     }
 
     foreach my $email_address ( $email_to, $email_cc ) {
-        $info->{email_to}   = $email_to;
-        $info->{email_cc}   = $email_cc;
+        next unless $email_address;
+        say "ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address" if $debug >= 0;
+
+        $info->{email_to}   = $email_address;
         $info->{email_from} = $email_from;
 
         my $p = {
@@ -560,6 +562,8 @@ sub run_update_report_and_clear_paid {
 
     foreach my $email_address ( $email_to, $email_cc ) {
         next unless $email_address;
+        say "ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address" if $debug >= 0;
+
         my $p = {
             to      => $email_address,
             from    => $email_from,
