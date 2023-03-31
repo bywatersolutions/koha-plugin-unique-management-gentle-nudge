@@ -219,7 +219,7 @@ sub cronjob_nightly {
 
 sub run_submissions_report {
     my ( $self, $params ) = @_;
-    my $age_limitation = $param->{age_limitation};
+    my $age_limitation = $params->{age_limitation};
 
     my $dbh = C4::Context->dbh;
     my $sth;
