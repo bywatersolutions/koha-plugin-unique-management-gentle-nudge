@@ -69,3 +69,6 @@ If you would like the collections flag automatically cleared for patrons who hav
 
 If your library restricts patrons while they are in collections, select Yes from the dropdown. Remember that while the collections flag can be set to clear automatically, restrictions must be manually cleared.
 
+#### Age Limitation
+
+If your library would prefer to exclude minors under the age of 18 from being sent to collections then select Yes from the dropdown. Remember that this is dependent on having a birthdate available for the patron.
