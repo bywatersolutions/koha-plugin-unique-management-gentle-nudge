@@ -186,6 +186,7 @@ sub cronjob_nightly {
     $params->{fees_ending_age}   = $self->retrieve_data('fees_ending_age');
     $params->{auto_clear_paid}   = $self->retrieve_data('auto_clear_paid');
     $params->{add_restriction}   = $self->retrieve_data('add_restriction');
+    $params->{age_limitation}    = $self->retrieve_data('age_limitation');
 
     # Starting age should be the large of the two numbers
     ( $params->{fees_starting_age}, $params->{fees_ending_age} ) =
@@ -218,6 +219,7 @@ sub cronjob_nightly {
 
 sub run_submissions_report {
     my ( $self, $params ) = @_;
+    my $age_limitation = $param->{age_limitation};
 
     my $dbh = C4::Context->dbh;
     my $sth;
@@ -288,10 +290,12 @@ FROM   accountlines
             };
     }
 
-     $ums_submission_query .= qq{
-           AND DATEDIFF(borrowers.dateofbirth, NOW()) > 18
-        } if $params->{age_limitation} eq 'yes';
-
+    if ($age_limitation eq 'yes') {
+        $ums_submission_query .= qq{
+            AND DATEDIFF(borrowers.dateofbirth, NOW()) > 18
+           };
+    }
+    
     $ums_submission_query .= qq{
             GROUP BY borrowers.borrowernumber
                 HAVING Sum(amountoutstanding) >= $params->{fees_threshold}
