@@ -89,6 +89,7 @@ sub configure {
             fees_ending_age => $self->retrieve_data('fees_ending_age') || 90,
             auto_clear_paid => $self->retrieve_data('auto_clear_paid'),
             add_restriction => $self->retrieve_data('add_restriction'),
+            age_limitation  => $self->retrieve_data('age_limitation'),
             host            => $self->retrieve_data('host'),
             username        => $self->retrieve_data('username'),
             password        => $self->retrieve_data('password'),
@@ -111,7 +112,8 @@ sub configure {
                 fees_ending_age   => $cgi->param('fees_ending_age'),
                 auto_clear_paid   => $cgi->param('auto_clear_paid'),
                 add_restriction   => $cgi->param('add_restriction'),
-                host              => $cgi->param('host'),
+                age_limitation    => $cgi->param('age_limitation'),
+	       	host              => $cgi->param('host'),
                 username          => $cgi->param('username'),
                 password          => $cgi->param('password'),
             }
@@ -268,6 +270,7 @@ FROM   accountlines
                 WHERE  1=1
                 AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
                 AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
+                AND DATEDIFF(borrowers.dateofbirth, NOW()) > 18
         };
 
     $ums_submission_query .= qq{
