@@ -288,6 +288,10 @@ FROM   accountlines
             };
     }
 
+     $ums_submission_query .= qq{
+           AND DATEDIFF(borrowers.dateofbirth, NOW()) > 18
+        } if $params->{age_limitation} eq 'yes';
+
     $ums_submission_query .= qq{
             GROUP BY borrowers.borrowernumber
                 HAVING Sum(amountoutstanding) >= $params->{fees_threshold}
