@@ -128,8 +128,8 @@
           </div>
 
           <div class="form-group">
-            <label for="age_limitation>Remove minors from collections report.</label>
-            <select name="age_limitation class="form-control">
+            <label for="age_limitation">Remove minors from collections report</label>
+            <select name="age_limitation" class="form-control">
               <option value="yes" [% IF age_limitation == "yes" %]selected="selected"[% END %]>Yes</option>
               <option value="no" [% IF age_limitation == "no" %]selected="selected"[% END %]>No</option>
             </select>
