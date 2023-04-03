@@ -136,6 +136,8 @@
             <span class="help-block">If enabled, patrons under the age of 18 years old will not be included on the collections report.</span>
           </div>
 
+
+
           <fieldset>
               <legend>Email Information</legend>
               <span class="help-block">If email information is set, plugin will email files to the given email addresses</span>
