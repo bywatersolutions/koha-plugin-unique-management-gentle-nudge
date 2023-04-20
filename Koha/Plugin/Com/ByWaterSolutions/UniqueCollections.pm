@@ -51,6 +51,14 @@ sub new {
     $args->{'metadata'} = $metadata;
     $args->{'metadata'}->{'class'} = $class;
 
+    # put borrowernumber, surname, firstname at the start of the CSV file
+    my @columns = @{ Koha::Patrons->search()->next()->_columns() };
+    @columns = grep { $_ ne "borrowernumber" } @columns;
+    @columns = grep { $_ ne "surname" } @columns;
+    @columns = grep { $_ ne "firstname" } @columns;
+    unshift( @columns, "borrowernumber", "surname", "firstname" );
+    $args->{columns} = \@columns;
+
     ## Here, we call the 'new' method for our base class
     ## This runs some additional magic and checking
     ## and returns our actual $self
@@ -113,7 +121,7 @@ sub configure {
                 auto_clear_paid   => $cgi->param('auto_clear_paid'),
                 add_restriction   => $cgi->param('add_restriction'),
                 age_limitation    => $cgi->param('age_limitation'),
-	       	host              => $cgi->param('host'),
+                host              => $cgi->param('host'),
                 username          => $cgi->param('username'),
                 password          => $cgi->param('password'),
             }
@@ -365,7 +373,7 @@ FROM   accountlines
     ## Email the results
     my $csv =
       @ums_new_submissions
-      ? Text::CSV::Slurp->create( input => \@ums_new_submissions )
+      ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $self->{columns} )
       : 'No qualifying records';
     say "CSV:\n" . $csv if $debug >= 2;
 
@@ -528,7 +536,7 @@ sub run_update_report_and_clear_paid {
 
     my $csv =
       @ums_updates
-      ? Text::CSV::Slurp->create( input => \@ums_updates )
+      ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $self->{columns} )
       : 'No qualifying records';
     say "CSV:\n" . $csv if $debug >= 2;
 
