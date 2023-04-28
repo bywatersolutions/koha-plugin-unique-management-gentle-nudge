@@ -51,13 +51,8 @@ sub new {
     $args->{'metadata'} = $metadata;
     $args->{'metadata'}->{'class'} = $class;
 
-    # put borrowernumber, surname, firstname at the start of the CSV file
-    my @columns = @{ Koha::Patrons->search()->next()->_columns() };
-    @columns = grep { $_ ne "borrowernumber" } @columns;
-    @columns = grep { $_ ne "surname" } @columns;
-    @columns = grep { $_ ne "firstname" } @columns;
-    unshift( @columns, "borrowernumber", "surname", "firstname" );
-    $args->{columns} = \@columns;
+    # Set columns order for the CSV files
+    $args->{columns} = [ "borrowernumber", "surname", "firstname", "cardnumber", "Due" ];
 
     ## Here, we call the 'new' method for our base class
     ## This runs some additional magic and checking
