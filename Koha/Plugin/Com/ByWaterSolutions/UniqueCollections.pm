@@ -295,7 +295,7 @@ FROM   accountlines
 
     if ($age_limitation eq 'yes') {
         $ums_submission_query .= qq{
-            AND DATEDIFF(borrowers.dateofbirth, NOW()) > 18
+            AND TIMESTAMPDIFF( YEAR, borrowers.dateofbirth, CURDATE() ) >= 18
            };
     }
     
