@@ -275,7 +275,6 @@ FROM   accountlines
                 WHERE  1=1
                 AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
                 AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
-                AND DATEDIFF(borrowers.dateofbirth, NOW()) > 18
         };
 
     $ums_submission_query .= qq{
