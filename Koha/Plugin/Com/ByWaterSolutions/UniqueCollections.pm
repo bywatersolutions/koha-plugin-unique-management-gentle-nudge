@@ -51,9 +51,6 @@ sub new {
     $args->{'metadata'} = $metadata;
     $args->{'metadata'}->{'class'} = $class;
 
-    # Set columns order for the CSV files
-    $args->{columns} = [ "borrowernumber", "surname", "firstname", "cardnumber", "Due" ];
-
     ## Here, we call the 'new' method for our base class
     ## This runs some additional magic and checking
     ## and returns our actual $self
@@ -248,15 +245,15 @@ MAX(borrowers.phone)              AS "phone",
 MAX(borrowers.mobile)             AS "mobile",
 MAX(borrowers.phonepro)           AS "Alt Ph 1",
 MAX(borrowers.b_phone)            AS "Alt Ph 2",
-MAX(borrowers.branchcode),
+MAX(borrowers.branchcode)         AS "branchcode",
 MAX(categories.category_type)     AS "Adult or Child",
-MAX(borrowers.dateofbirth),
+MAX(borrowers.dateofbirth)        AS "dateofbirth",
 MAX(accountlines.date)            AS "Most recent charge",
-FORMAT(Sum(amountoutstanding), 2) AS Amt_In_Range,
-MAX(sub.due)                      AS Total_Due,
-MAX(sub.dueplus)                  AS Total_Plus_Fee,
-MAX(borrowers.email)
-FROM   accountlines
+FORMAT(Sum(amountoutstanding), 2) AS "Amt_In_Range",
+MAX(sub.due)                      AS "Total_Due",
+MAX(sub.dueplus)                  AS "Total_Plus_Fee",
+MAX(borrowers.email)              AS "email"
+FROM accountlines
     };
 
     $ums_submission_query .= qq{
@@ -364,10 +361,23 @@ FROM   accountlines
         push( @ums_new_submissions, $r );
     }
 
+    my $columns = [
+        "borrowernumber", "surname",
+        "firstname",      "cardnumber",
+        "address",        "city",
+        "zipcode",        "state",
+        "phone",          "mobile",
+        "Alt Ph 1",       "Alt Ph 2",
+        "branchcode",     "Adult or Child",
+        "dateofbirth",    "Most recent charge",
+        "Amt_In_Range",   "Total_Due",
+        "Total_Plus_Fee", "email"
+    ];
+
     ## Email the results
     my $csv =
       @ums_new_submissions
-      ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $self->{columns} )
+      ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
       : 'No qualifying records';
     warn "CSV:\n" . $csv if $debug >= 2;
 
@@ -528,9 +538,11 @@ sub run_update_report_and_clear_paid {
         file_path => $file_path,
     };
 
+    my $columns = [ "borrowernumber", "surname", "firstname", "cardnumber", "Due" ];
+
     my $csv =
       @ums_updates
-      ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $self->{columns} )
+      ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $columns )
       : 'No qualifying records';
     warn "CSV:\n" . $csv if $debug >= 2;
 
