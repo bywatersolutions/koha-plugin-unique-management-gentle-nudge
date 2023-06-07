@@ -93,7 +93,7 @@ sub configure {
             username        => $self->retrieve_data('username'),
             password        => $self->retrieve_data('password'),
             attributes      => scalar Koha::Patron::Attribute::Types->search(),
-            fees_created_before_date => $self->retrieve_data('fees_created_before_date'),
+            fees_created_before_date_filter => $self->retrieve_data('fees_created_before_date_filter'),
         );
 
         $self->output_html( $template->output() );
@@ -116,7 +116,7 @@ sub configure {
                 host              => $cgi->param('host'),
                 username          => $cgi->param('username'),
                 password          => $cgi->param('password'),
-                fees_created_before_date   => $cgi->param('fees_created_before_date'),
+                fees_created_before_date_filter   => $cgi->param('fees_created_before_date_filter'),
             }
         );
         $self->go_home();
@@ -188,7 +188,7 @@ sub cronjob_nightly {
     $params->{auto_clear_paid}   = $self->retrieve_data('auto_clear_paid');
     $params->{add_restriction}   = $self->retrieve_data('add_restriction');
     $params->{age_limitation}    = $self->retrieve_data('age_limitation');
-    $params->{fees_created_before_date}   = $self->retrieve_data('fees_created_before_date');
+    $params->{fees_created_before_date_filter}   = $self->retrieve_data('fees_created_before_date_filter');
 
     # Starting age should be the large of the two numbers
     ( $params->{fees_starting_age}, $params->{fees_ending_age} ) =
@@ -295,8 +295,8 @@ FROM accountlines
         $ums_submission_query .= qq{ AND TIMESTAMPDIFF( YEAR, borrowers.dateofbirth, CURDATE() ) >= 18 };
     }
 
-    if ($params->{fees_created_before_date}) {
-        $ums_submission_query .= qq{ AND accountlines.date < $params->{fees_created_before_date} };
+    if ($params->{fees_created_before_date_filter}) {
+        $ums_submission_query .= qq{ AND accountlines.date > $params->{fees_created_before_date_filter} };
     }
     
     $ums_submission_query .= qq{

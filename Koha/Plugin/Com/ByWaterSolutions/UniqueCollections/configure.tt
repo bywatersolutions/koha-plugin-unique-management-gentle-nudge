@@ -111,8 +111,8 @@
           </div>
 
           <div class="form-group">
-            <label for="fees_created_before_date">Ignore fees created before this date</label>
-            <input type="text" id="fees_created_before_date" size="10" name="fees_created_before_date" class="flatpickr" value="[% fees_created_before_date | html %]"/>
+            <label for="fees_created_before_date_filter">Ignore fees created before this date</label>
+            <input type="text" id="fees_created_before_date_filter" size="10" name="fees_created_before_date_filter" class="flatpickr" value="[% fees_created_before_date_filter | html %]"/>
             <span class="help-block">Fees created before this date will not be part of the total used to check if apatron should be sent to collections..</span>
           </div>
 
@@ -190,7 +190,7 @@
     [% INCLUDE 'calendar.inc' %]
     <script>
         $(document).ready(function() {
-            $('#fees_created_before_date').flatpickr();
+            $('#fees_created_before_date_filter').flatpickr();
         });
     </script>
 [% END %]
