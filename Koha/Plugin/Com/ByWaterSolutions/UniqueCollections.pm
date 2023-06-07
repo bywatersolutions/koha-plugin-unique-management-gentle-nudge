@@ -296,7 +296,7 @@ FROM accountlines
     }
 
     if ($params->{fees_created_before_date_filter}) {
-        $ums_submission_query .= qq{ AND accountlines.date > $params->{fees_created_before_date_filter} };
+        $ums_submission_query .= qq{ AND accountlines.date > "$params->{fees_created_before_date_filter}" };
     }
     
     $ums_submission_query .= qq{
