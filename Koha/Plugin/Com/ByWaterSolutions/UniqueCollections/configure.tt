@@ -149,6 +149,14 @@
             <span class="help-block">If enabled, patrons under the age of 18 years old will not be included on the collections report.</span>
           </div>
 
+          <div class="form-group">
+            <label for="remove_restriction">Remove restriction for patrons entering collections</label>
+            <select name="remove_restriction" class="form-control">
+              <option value="yes" [% IF remove_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
+              <option value="no" [% IF remove_restriction == "no" %]selected="selected"[% END %]>No</option>
+            </select>
+            <span class="help-block">If enabled, newly flag patrons will have a restriction added to their record.</span>
+          </div>
 
 
           <fieldset>

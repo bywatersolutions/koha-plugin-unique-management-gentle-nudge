@@ -88,6 +88,7 @@ sub configure {
             fees_ending_age   => $self->retrieve_data('fees_ending_age') || 90,
             auto_clear_paid => $self->retrieve_data('auto_clear_paid'),
             add_restriction => $self->retrieve_data('add_restriction'),
+            remove_restriction => $self->retrieve_data('remove_restriction'),
             age_limitation  => $self->retrieve_data('age_limitation'),
             host            => $self->retrieve_data('host'),
             username        => $self->retrieve_data('username'),
@@ -113,6 +114,7 @@ sub configure {
                 fees_ending_age   => $cgi->param('fees_ending_age'),
                 auto_clear_paid   => $cgi->param('auto_clear_paid'),
                 add_restriction   => $cgi->param('add_restriction'),
+                remove_restriction   => $cgi->param('remove_restriction'),
                 age_limitation    => $cgi->param('age_limitation'),
                 host              => $cgi->param('host'),
                 username          => $cgi->param('username'),
@@ -189,6 +191,7 @@ sub cronjob_nightly {
     $params->{fees_ending_age}   = $self->retrieve_data('fees_ending_age');
     $params->{auto_clear_paid}   = $self->retrieve_data('auto_clear_paid');
     $params->{add_restriction}   = $self->retrieve_data('add_restriction');
+    $params->{remove_restriction} = $self->retrieve_data('remove_restriction');
     $params->{age_limitation}    = $self->retrieve_data('age_limitation');
     $params->{auto_clear_paid_threshold} = $self->retrieve_data('auto_clear_paid_threshold');
     $params->{fees_created_before_date_filter} = $self->retrieve_data('fees_created_before_date_filter');
@@ -481,7 +484,6 @@ FROM accountlines
 sub run_update_report_and_clear_paid {
     my ( $self, $params ) = @_;
 
-    my $auto_clear_paid_threshold = $self->retrieve_data('auto_clear_paid_threshold') || 0;
     my $dbh = C4::Context->dbh;
     my $sth;
 
@@ -528,8 +530,18 @@ sub run_update_report_and_clear_paid {
         warn "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
         push( @ums_updates, $r );
 
-        $self->clear_patron_from_collections( $params, $r->{borrowernumber} )
-          if $params->{auto_clear_paid} eq 'yes' && $r->{Due} <= $auto_clear_paid_threshold;
+        if ( $params->{auto_clear_paid} eq 'yes' && $r->{Due} <= $params->{auto_clear_paid_threshold} ) {
+            $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
+            if ( $params->{remove_restriction} ) {
+                Koha::Patron::Restrictions->search(
+                    {
+                        borrowernumber => $r->{borrowernumber},
+                        comment        =>
+                          { 'like' => "Patron sent to collections on %" }
+                    }
+                )->delete();
+            }
+        }
     }
 
     ## Email the results
