@@ -93,6 +93,7 @@ sub configure {
             username        => $self->retrieve_data('username'),
             password        => $self->retrieve_data('password'),
             attributes      => scalar Koha::Patron::Attribute::Types->search(),
+            auto_clear_paid_threshold => $self->retrieve_data('auto_clear_paid_threshold'),
             fees_created_before_date_filter => $self->retrieve_data('fees_created_before_date_filter'),
         );
 
@@ -116,6 +117,7 @@ sub configure {
                 host              => $cgi->param('host'),
                 username          => $cgi->param('username'),
                 password          => $cgi->param('password'),
+                auto_clear_paid_threshold   => $cgi->param('auto_clear_paid_threshold'),
                 fees_created_before_date_filter   => $cgi->param('fees_created_before_date_filter'),
             }
         );
@@ -188,7 +190,8 @@ sub cronjob_nightly {
     $params->{auto_clear_paid}   = $self->retrieve_data('auto_clear_paid');
     $params->{add_restriction}   = $self->retrieve_data('add_restriction');
     $params->{age_limitation}    = $self->retrieve_data('age_limitation');
-    $params->{fees_created_before_date_filter}   = $self->retrieve_data('fees_created_before_date_filter');
+    $params->{auto_clear_paid_threshold} = $self->retrieve_data('auto_clear_paid_threshold');
+    $params->{fees_created_before_date_filter} = $self->retrieve_data('fees_created_before_date_filter');
 
     # Starting age should be the large of the two numbers
     ( $params->{fees_starting_age}, $params->{fees_ending_age} ) =
@@ -478,6 +481,7 @@ FROM accountlines
 sub run_update_report_and_clear_paid {
     my ( $self, $params ) = @_;
 
+    my $auto_clear_paid_threshold = $self->retrieve_data('auto_clear_paid_threshold') || 0;
     my $dbh = C4::Context->dbh;
     my $sth;
 
@@ -525,7 +529,7 @@ sub run_update_report_and_clear_paid {
         push( @ums_updates, $r );
 
         $self->clear_patron_from_collections( $params, $r->{borrowernumber} )
-          if $params->{auto_clear_paid} eq 'yes' && $r->{Due} eq "0.00";
+          if $params->{auto_clear_paid} eq 'yes' && $r->{Due} <= $auto_clear_paid_threshold;
     }
 
     ## Email the results

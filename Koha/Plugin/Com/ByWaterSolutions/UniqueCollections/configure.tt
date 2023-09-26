@@ -117,12 +117,18 @@
           </div>
 
           <div class="form-group">
-            <label for="auto_clear_paid">Clear collections flag for patrons with zero balance</label>
+            <label for="auto_clear_paid">Clear collections flag for patrons with balance at or below the threshold</label>
             <select name="auto_clear_paid" class="form-control">
               <option value="yes" [% IF auto_clear_paid == "yes" %]selected="selected"[% END %]>Yes</option>
               <option value="no" [% IF auto_clear_paid == "no" %]selected="selected"[% END %]>No</option>
             </select>
             <span class="help-block">If enabled, patrons who have paid off all they owe will have the collections flag removed automatically.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="auto_clear_paid_threshold">Clear collections flag threshold</label>
+            <input type="text" name="auto_clear_paid_threshold" class="form-control" value="[% auto_clear_paid_threshold || 0 %]">
+            <span class="help-block">If set, the patron will be cleared from collections if if they do not exceed this threshold.</span>
           </div>
 
           <div class="form-group">
