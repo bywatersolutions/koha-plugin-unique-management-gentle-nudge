@@ -230,418 +230,448 @@ sub run_submissions_report {
     my $age_limitation = $params->{age_limitation};
 
     my $dbh = C4::Context->dbh;
-    my $sth;
+    $dbh->{AutoCommit} = 0; # enable transactions 
+    $dbh->{RaiseError} = 1; # die if a query has problems
 
-    my $ums_submission_query = q{
-SELECT
-    };
+    try {
+        my $sth;
 
-    $ums_submission_query .= q{
-MAX(attribute),
-    } if $params->{flag_type} eq 'attribute_field';
-
-    $ums_submission_query .= q{
-MAX(borrowers.cardnumber)         AS "cardnumber",
-MAX(borrowers.borrowernumber)     AS "borrowernumber",
-MAX(borrowers.surname)            AS "surname",
-MAX(borrowers.firstname)          AS "firstname",
-MAX(borrowers.address)            AS "address",
-MAX(borrowers.city)               AS "city",
-MAX(borrowers.zipcode)            AS "zipcode",
-MAX(borrowers.state)              AS "state",
-MAX(borrowers.phone)              AS "phone",
-MAX(borrowers.mobile)             AS "mobile",
-MAX(borrowers.phonepro)           AS "Alt Ph 1",
-MAX(borrowers.b_phone)            AS "Alt Ph 2",
-MAX(borrowers.branchcode)         AS "branchcode",
-MAX(categories.category_type)     AS "Adult or Child",
-MAX(borrowers.dateofbirth)        AS "dateofbirth",
-MAX(accountlines.date)            AS "Most recent charge",
-FORMAT(Sum(amountoutstanding), 2) AS "Amt_In_Range",
-MAX(sub.due)                      AS "Total_Due",
-MAX(sub.dueplus)                  AS "Total_Plus_Fee",
-MAX(borrowers.email)              AS "email"
-FROM accountlines
-    };
-
-    $ums_submission_query .= qq{
-       LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
-           AND code = '$params->{collections_flag}'
-        } if $params->{flag_type} eq 'attribute_field';
-
-    $ums_submission_query .= qq{
-            LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
-                LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
-                LEFT JOIN (SELECT FORMAT(Sum(accountlines.amountoutstanding), 2) AS Due,
-                        FORMAT(Sum(accountlines.amountoutstanding) + $params->{processing_fee}, 2) AS DuePlus,
-                        borrowernumber
-                        FROM   accountlines
-                        GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
-                WHERE  1=1
-                AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
-                AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
+        my $ums_submission_query = q{
+    SELECT
         };
 
-    $ums_submission_query .= qq{
-            AND ( borrowers.$params->{collections_flag} = 'no' OR borrowers.$params->{collections_flag} IS NULL OR borrowers.$params->{collections_flag} = "" )
-        } if $params->{flag_type} eq 'borrower_field';
-
-    $ums_submission_query .= q{
-            AND ( attribute = '0' OR attribute IS NULL )
+        $ums_submission_query .= q{
+    MAX(attribute),
         } if $params->{flag_type} eq 'attribute_field';
 
-    if ( @{ $params->{categorycodes} } ) {
-        my $codes = join( ',', map { qq{"$_"} } @{ $params->{categorycodes} } );
+        $ums_submission_query .= q{
+    MAX(borrowers.cardnumber)         AS "cardnumber",
+    MAX(borrowers.borrowernumber)     AS "borrowernumber",
+    MAX(borrowers.surname)            AS "surname",
+    MAX(borrowers.firstname)          AS "firstname",
+    MAX(borrowers.address)            AS "address",
+    MAX(borrowers.city)               AS "city",
+    MAX(borrowers.zipcode)            AS "zipcode",
+    MAX(borrowers.state)              AS "state",
+    MAX(borrowers.phone)              AS "phone",
+    MAX(borrowers.mobile)             AS "mobile",
+    MAX(borrowers.phonepro)           AS "Alt Ph 1",
+    MAX(borrowers.b_phone)            AS "Alt Ph 2",
+    MAX(borrowers.branchcode)         AS "branchcode",
+    MAX(categories.category_type)     AS "Adult or Child",
+    MAX(borrowers.dateofbirth)        AS "dateofbirth",
+    MAX(accountlines.date)            AS "Most recent charge",
+    FORMAT(Sum(amountoutstanding), 2) AS "Amt_In_Range",
+    MAX(sub.due)                      AS "Total_Due",
+    MAX(sub.dueplus)                  AS "Total_Plus_Fee",
+    MAX(borrowers.email)              AS "email"
+    FROM accountlines
+        };
+
         $ums_submission_query .= qq{
-                AND borrowers.categorycode IN ( $codes )
+           LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
+               AND code = '$params->{collections_flag}'
+            } if $params->{flag_type} eq 'attribute_field';
+
+        $ums_submission_query .= qq{
+                LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
+                    LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
+                    LEFT JOIN (SELECT FORMAT(Sum(accountlines.amountoutstanding), 2) AS Due,
+                            FORMAT(Sum(accountlines.amountoutstanding) + $params->{processing_fee}, 2) AS DuePlus,
+                            borrowernumber
+                            FROM   accountlines
+                            GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
+                    WHERE  1=1
+                    AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
+                    AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
             };
-    }
 
-    if ($age_limitation eq 'yes') {
-        $ums_submission_query .= qq{ AND TIMESTAMPDIFF( YEAR, borrowers.dateofbirth, CURDATE() ) >= 18 };
-    }
+        $ums_submission_query .= qq{
+                AND ( borrowers.$params->{collections_flag} = 'no' OR borrowers.$params->{collections_flag} IS NULL OR borrowers.$params->{collections_flag} = "" )
+            } if $params->{flag_type} eq 'borrower_field';
 
-    if ($params->{fees_created_before_date_filter}) {
-        $ums_submission_query .= qq{ AND accountlines.date > "$params->{fees_created_before_date_filter}" };
-    }
-    
-    $ums_submission_query .= qq{
-            GROUP BY borrowers.borrowernumber
-                HAVING Sum(amountoutstanding) >= $params->{fees_threshold}
-                ORDER BY borrowers.surname ASC
-        };
+        $ums_submission_query .= q{
+                AND ( attribute = '0' OR attribute IS NULL )
+            } if $params->{flag_type} eq 'attribute_field';
 
-    warn "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug >= 0;
+        if ( @{ $params->{categorycodes} } ) {
+            my $codes = join( ',', map { qq{"$_"} } @{ $params->{categorycodes} } );
+            $ums_submission_query .= qq{
+                    AND borrowers.categorycode IN ( $codes )
+                };
+        }
+
+        if ($age_limitation eq 'yes') {
+            $ums_submission_query .= qq{ AND TIMESTAMPDIFF( YEAR, borrowers.dateofbirth, CURDATE() ) >= 18 };
+        }
+
+        if ($params->{fees_created_before_date_filter}) {
+            $ums_submission_query .= qq{ AND accountlines.date > "$params->{fees_created_before_date_filter}" };
+        }
+        
+        $ums_submission_query .= qq{
+                GROUP BY borrowers.borrowernumber
+                    HAVING Sum(amountoutstanding) >= $params->{fees_threshold}
+                    ORDER BY borrowers.surname ASC
+            };
+
+        warn "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug >= 0;
 
 ### Update new submissions patrons, add fee, mark as being in collections
-    $sth = $dbh->prepare($ums_submission_query);
-    $sth->execute();
-    my @ums_new_submissions;
-    while ( my $r = $sth->fetchrow_hashref ) {
-        warn "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
+        $sth = $dbh->prepare($ums_submission_query);
+        $sth->execute();
+        my @ums_new_submissions;
+        while ( my $r = $sth->fetchrow_hashref ) {
+            warn "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
 
-        my $patron = Koha::Patrons->find( $r->{borrowernumber} );
-        next unless $patron;
+            my $patron = Koha::Patrons->find( $r->{borrowernumber} );
+            next unless $patron;
 
-        if ( $params->{add_restriction} eq 'yes' ) {
-            AddDebarment(
-                {
-                    borrowernumber => $patron->borrowernumber,
-                    expiration     => undef,
-                    type           => 'MANUAL',
-                    comment => "Patron sent to collections on $params->{date}",
-                }
-            );
-        }
-
-        if ( $params->{flag_type} eq 'borrower_field' ) {
-            $patron->update( { $params->{collections_flag} => 'yes' } );
-        }
-        if ( $params->{flag_type} eq 'attribute_field' ) {
-            my $a = Koha::Patron::Attributes->find(
-                {
-                    borrowernumber => $patron->id,
-                    code           => $params->{collections_flag},
-                }
-            );
-
-            if ($a) {
-                $a->attribute(1)->store();
+            if ( $params->{add_restriction} eq 'yes' ) {
+                AddDebarment(
+                    {
+                        borrowernumber => $patron->borrowernumber,
+                        expiration     => undef,
+                        type           => 'MANUAL',
+                        comment => "Patron sent to collections on $params->{date}",
+                    }
+                );
             }
-            else {
-                Koha::Patron::Attribute->new(
+
+            if ( $params->{flag_type} eq 'borrower_field' ) {
+                $patron->update( { $params->{collections_flag} => 'yes' } );
+            }
+            if ( $params->{flag_type} eq 'attribute_field' ) {
+                my $a = Koha::Patron::Attributes->find(
                     {
                         borrowernumber => $patron->id,
                         code           => $params->{collections_flag},
-                        attribute      => 1,
                     }
-                )->store();
+                );
+
+                if ($a) {
+                    $a->attribute(1)->store();
+                }
+                else {
+                    Koha::Patron::Attribute->new(
+                        {
+                            borrowernumber => $patron->id,
+                            code           => $params->{collections_flag},
+                            attribute      => 1,
+                        }
+                    )->store();
+                }
+            }
+
+            $patron->account->add_debit(
+                {
+                    amount      => $params->{processing_fee},
+                    description => "UMS Processing Fee",
+                    interface   => 'cron',
+                    type        => 'MANUAL',
+                }
+            );
+
+            push( @ums_new_submissions, $r );
+        }
+
+        my $columns = [
+            "borrowernumber", "surname",
+            "firstname",      "cardnumber",
+            "address",        "city",
+            "zipcode",        "state",
+            "phone",          "mobile",
+            "Alt Ph 1",       "Alt Ph 2",
+            "branchcode",     "Adult or Child",
+            "dateofbirth",    "Most recent charge",
+            "Amt_In_Range",   "Total_Due",
+            "Total_Plus_Fee", "email"
+        ];
+
+        ## Email the results
+        my $csv =
+          @ums_new_submissions
+          ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
+          : 'No qualifying records';
+        warn "CSV:\n" . $csv if $debug >= 2;
+
+        $archive_dir ||= "/tmp";
+
+        my $filename  = "ums-new-submissions-$params->{date}.csv";
+        my $file_path = "$archive_dir/$filename";
+
+        write_file( $file_path, $csv );
+        warn "ARCHIVE WRITTEN TO $file_path" if $debug;
+
+        my $sftp_host     = $self->retrieve_data('host');
+        my $sftp_username = $self->retrieve_data('username');
+        my $sftp_password = $self->retrieve_data('password');
+
+        my $email_to   = $self->retrieve_data('unique_email');
+        my $email_from = C4::Context->preference('KohaAdminEmailAddress');
+        my $email_cc   = $self->retrieve_data('cc_email');
+
+        my $info = {
+            count     => scalar @ums_new_submissions,
+            filename  => $filename,
+            file_path => $file_path,
+        };
+
+        if ($sftp_host) {
+            $info->{sftp_host}     = $sftp_host;
+            $info->{sftp_username} = $sftp_username;
+
+            my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'cust2unique';
+
+            my $sftp = Net::SFTP::Foreign->new(
+                host     => $sftp_host,
+                user     => $sftp_username,
+                port     => 22,
+                password => $sftp_password
+            );
+
+            try {
+                $sftp->die_on_error("Unable to establish SFTP connection");
+                $sftp->setcwd($directory)
+                  or die "unable to change cwd: " . $sftp->error;
+                $sftp->put( $file_path, $filename )
+                  or die "put failed: " . $sftp->error;
+            }
+            catch {
+                $info->{sftp_failed} = 'true';
+                $info->{sftp_error}  = $_;
             }
         }
 
-        $patron->account->add_debit(
-            {
-                amount      => $params->{processing_fee},
-                description => "UMS Processing Fee",
-                interface   => 'cron',
-                type        => 'MANUAL',
+        foreach my $email_address ( $email_to, $email_cc ) {
+            next unless $email_address;
+            warn "ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address" if $debug >= 0;
+
+            $info->{email_to}   = $email_address;
+            $info->{email_from} = $email_from;
+
+            my $p = {
+                to      => $email_address,
+                from    => $email_from,
+                subject => "UMS New Submissions for "
+                  . C4::Context->preference('LibraryName'),
+            };
+            my $email = Koha::Email->new($p);
+
+            $email->attach(
+                Encode::encode_utf8($csv),
+                content_type => "text/csv",
+                filename     => "ums-new-submissions-$params->{date}.csv",
+                name         => "ums-new-submissions-$params->{date}.csv",
+                disposition  => 'attachment',
+            );
+
+            my $smtp_server = Koha::SMTP::Servers->get_default;
+            $email->transport( $smtp_server->transport );
+
+            try {
+                $email->send_or_die unless $no_email;
             }
-        );
+            catch {
+                $info->{email_failed}  = 'true';
+                $info->{email_address} = $email_address;
+                $info->{email_error}   = $_;
 
-        push( @ums_new_submissions, $r );
-    }
+                logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS_ERROR', undef,
+                    JSON->new->pretty->encode($info), 'cron' );
 
-    my $columns = [
-        "borrowernumber", "surname",
-        "firstname",      "cardnumber",
-        "address",        "city",
-        "zipcode",        "state",
-        "phone",          "mobile",
-        "Alt Ph 1",       "Alt Ph 2",
-        "branchcode",     "Adult or Child",
-        "dateofbirth",    "Most recent charge",
-        "Amt_In_Range",   "Total_Due",
-        "Total_Plus_Fee", "email"
-    ];
+                die "Mail not sent: $_";
+            };
+        }
 
-    ## Email the results
-    my $csv =
-      @ums_new_submissions
-      ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
-      : 'No qualifying records';
-    warn "CSV:\n" . $csv if $debug >= 2;
-
-    $archive_dir ||= "/tmp";
-
-    my $filename  = "ums-new-submissions-$params->{date}.csv";
-    my $file_path = "$archive_dir/$filename";
-
-    write_file( $file_path, $csv );
-    warn "ARCHIVE WRITTEN TO $file_path" if $debug;
-
-    my $sftp_host     = $self->retrieve_data('host');
-    my $sftp_username = $self->retrieve_data('username');
-    my $sftp_password = $self->retrieve_data('password');
-
-    my $email_to   = $self->retrieve_data('unique_email');
-    my $email_from = C4::Context->preference('KohaAdminEmailAddress');
-    my $email_cc   = $self->retrieve_data('cc_email');
-
-    my $info = {
-        count     => scalar @ums_new_submissions,
-        filename  => $filename,
-        file_path => $file_path,
+        logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS', undef,
+            JSON->new->pretty->encode($info), 'cron' );
+    } catch {
+        $info->{error} = $_;
+        logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS_ERROR', undef,
+            JSON->new->pretty->encode($info), 'cron' );
+        $dbh->rollback(); 
+        die "error in run_update_report_and_clear_paid: $_";
     };
-
-    if ($sftp_host) {
-        $info->{sftp_host}     = $sftp_host;
-        $info->{sftp_username} = $sftp_username;
-
-        my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'cust2unique';
-
-        my $sftp = Net::SFTP::Foreign->new(
-            host     => $sftp_host,
-            user     => $sftp_username,
-            port     => 22,
-            password => $sftp_password
-        );
-
-        try {
-            $sftp->die_on_error("Unable to establish SFTP connection");
-            $sftp->setcwd($directory)
-              or die "unable to change cwd: " . $sftp->error;
-            $sftp->put( $file_path, $filename )
-              or die "put failed: " . $sftp->error;
-        }
-        catch {
-            $info->{sftp_failed} = 'true';
-            $info->{sftp_error}  = $_;
-        }
-    }
-
-    foreach my $email_address ( $email_to, $email_cc ) {
-        next unless $email_address;
-        warn "ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address" if $debug >= 0;
-
-        $info->{email_to}   = $email_address;
-        $info->{email_from} = $email_from;
-
-        my $p = {
-            to      => $email_address,
-            from    => $email_from,
-            subject => "UMS New Submissions for "
-              . C4::Context->preference('LibraryName'),
-        };
-        my $email = Koha::Email->new($p);
-
-        $email->attach(
-            Encode::encode_utf8($csv),
-            content_type => "text/csv",
-            filename     => "ums-new-submissions-$params->{date}.csv",
-            name         => "ums-new-submissions-$params->{date}.csv",
-            disposition  => 'attachment',
-        );
-
-        my $smtp_server = Koha::SMTP::Servers->get_default;
-        $email->transport( $smtp_server->transport );
-
-        try {
-            $email->send_or_die unless $no_email;
-        }
-        catch {
-            $info->{email_failed}  = 'true';
-            $info->{email_address} = $email_address;
-            $info->{email_error}   = $_;
-
-            warn "Mail not sent: $_";
-        };
-    }
-
-    logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS', undef,
-        JSON->new->pretty->encode($info), 'cron' );
 }
 
 sub run_update_report_and_clear_paid {
     my ( $self, $params ) = @_;
 
     my $dbh = C4::Context->dbh;
-    my $sth;
+    $dbh->{AutoCommit} = 0; # enable transactions 
+    $dbh->{RaiseError} = 1; # die if a query has problems
 
-    my $ums_update_query = q{
-        SELECT borrowers.cardnumber,
-               borrowers.borrowernumber,
-               MAX(borrowers.surname)                         AS "surname",
-               MAX(borrowers.firstname)                       AS "firstname",
-               FORMAT(Sum(accountlines.amountoutstanding), 2) AS "Due"
-                   FROM   accountlines
-                   LEFT JOIN borrowers USING(borrowernumber)
-                   LEFT JOIN categories USING(categorycode)
-    };
+    try {
+        my $sth;
 
-    $ums_update_query .= qq{
-        LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
-            AND code = '$params->{collections_flag}'
-    } if $params->{flag_type} eq 'attribute_field';
+        my $ums_update_query = q{
+            SELECT borrowers.cardnumber,
+                   borrowers.borrowernumber,
+                   MAX(borrowers.surname)                         AS "surname",
+                   MAX(borrowers.firstname)                       AS "firstname",
+                   FORMAT(Sum(accountlines.amountoutstanding), 2) AS "Due"
+                       FROM   accountlines
+                       LEFT JOIN borrowers USING(borrowernumber)
+                       LEFT JOIN categories USING(categorycode)
+        };
 
-    $ums_update_query .= q{
-        WHERE  1=1
-    };
+        $ums_update_query .= qq{
+            LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
+                AND code = '$params->{collections_flag}'
+        } if $params->{flag_type} eq 'attribute_field';
 
-    $ums_update_query .= qq{
-        AND attribute = '1'
-    } if $params->{flag_type} eq 'attribute_field';
+        $ums_update_query .= q{
+            WHERE  1=1
+        };
 
-    $ums_update_query .= qq{
-        AND borrowers.$params->{collections_flag} = 'yes'
-    } if $params->{flag_type} eq 'borrower_field';
+        $ums_update_query .= qq{
+            AND attribute = '1'
+        } if $params->{flag_type} eq 'attribute_field';
 
-    $ums_update_query .= q{
-        GROUP BY borrowers.borrowernumber
-            ORDER BY borrowers.surname ASC
-    };
+        $ums_update_query .= qq{
+            AND borrowers.$params->{collections_flag} = 'yes'
+        } if $params->{flag_type} eq 'borrower_field';
 
-    warn "UMS UPDATE QUERY:\n$ums_update_query"
-      if ( !$params->{send_sync_report} ) && $debug >= 0;
+        $ums_update_query .= q{
+            GROUP BY borrowers.borrowernumber
+                ORDER BY borrowers.surname ASC
+        };
 
-    $sth = $dbh->prepare($ums_update_query);
-    $sth->execute();
-    my @ums_updates;
-    while ( my $r = $sth->fetchrow_hashref ) {
-        warn "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
-        push( @ums_updates, $r );
+        warn "UMS UPDATE QUERY:\n$ums_update_query"
+          if ( !$params->{send_sync_report} ) && $debug >= 0;
 
-        if ( $params->{auto_clear_paid} eq 'yes' && $r->{Due} <= $params->{auto_clear_paid_threshold} ) {
-            $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
-            if ( $params->{remove_restriction} ) {
-                Koha::Patron::Restrictions->search(
-                    {
-                        borrowernumber => $r->{borrowernumber},
-                        comment        =>
-                          { 'like' => "Patron sent to collections on %" }
-                    }
-                )->delete();
+        $sth = $dbh->prepare($ums_update_query);
+        $sth->execute();
+        my @ums_updates;
+        while ( my $r = $sth->fetchrow_hashref ) {
+            warn "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
+            push( @ums_updates, $r );
+
+            if ( $params->{auto_clear_paid} eq 'yes' && $r->{Due} <= $params->{auto_clear_paid_threshold} ) {
+                $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
+                if ( $params->{remove_restriction} ) {
+                    Koha::Patron::Restrictions->search(
+                        {
+                            borrowernumber => $r->{borrowernumber},
+                            comment        =>
+                              { 'like' => "Patron sent to collections on %" }
+                        }
+                    )->delete();
+                }
             }
         }
-    }
 
-    ## Email the results
-    my $type = $params->{send_sync_report} ? 'sync' : 'updates';
+        ## Email the results
+        my $type = $params->{send_sync_report} ? 'sync' : 'updates';
 
-    $archive_dir ||= "/tmp";
-    my $filename  = "ums-$type-$params->{date}.csv";
-    my $file_path = "$archive_dir/$filename";
+        $archive_dir ||= "/tmp";
+        my $filename  = "ums-$type-$params->{date}.csv";
+        my $file_path = "$archive_dir/$filename";
 
-    my $info = {
-        count     => scalar @ums_updates,
-        type      => $type,
-        filename  => $filename,
-        file_path => $file_path,
+        my $info = {
+            count     => scalar @ums_updates,
+            type      => $type,
+            filename  => $filename,
+            file_path => $file_path,
+        };
+
+        my $columns = [ "borrowernumber", "surname", "firstname", "cardnumber", "Due" ];
+
+        my $csv =
+          @ums_updates
+          ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $columns )
+          : 'No qualifying records';
+        warn "CSV:\n" . $csv if $debug >= 2;
+
+        write_file( $file_path, $csv )
+          if $archive_dir;
+        warn "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
+          if $archive_dir && $debug;
+
+        my $sftp_host     = $self->retrieve_data('host');
+        my $sftp_username = $self->retrieve_data('username');
+        my $sftp_password = $self->retrieve_data('password');
+
+        my $email_from = C4::Context->preference('KohaAdminEmailAddress');
+        my $email_to   = $self->retrieve_data('unique_email');
+        my $email_cc   = $self->retrieve_data('cc_email');
+
+        if ($sftp_host) {
+            $info->{sftp_host}     = $sftp_host;
+            $info->{sftp_username} = $sftp_username;
+
+            my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'cust2unique';
+
+            my $sftp = Net::SFTP::Foreign->new(
+                host     => $sftp_host,
+                user     => $sftp_username,
+                port     => 22,
+                password => $sftp_password
+            );
+
+            try {
+                $sftp->die_on_error("Unable to establish SFTP connection");
+                $sftp->setcwd($directory)
+                  or die "unable to change cwd: " . $sftp->error;
+                $sftp->put( $file_path, $filename )
+                  or die "put failed: " . $sftp->error;
+            }
+            catch {
+                $info->{sftp_failed} = 'true';
+                $info->{sftp_error}  = $_;
+            }
+        }
+
+        foreach my $email_address ( $email_to, $email_cc ) {
+            next unless $email_address;
+            warn "ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address" if $debug >= 0;
+
+            my $p = {
+                to      => $email_address,
+                from    => $email_from,
+                subject => sprintf( "UMS %s for %s",
+                    ucfirst($type), C4::Context->preference('LibraryName') ),
+            };
+            my $email = Koha::Email->new($p);
+
+            $email->attach(
+                Encode::encode_utf8($csv),
+                content_type => "text/csv",
+                filename     => $filename,
+                name         => $filename,
+                disposition  => 'attachment',
+            );
+
+            my $smtp_server = Koha::SMTP::Servers->get_default;
+            $email->transport( $smtp_server->transport );
+
+            try {
+                $email->send_or_die unless $no_email;
+            }
+            catch {
+                $info->{email_failed}  = 'true';
+                $info->{email_address} = $email_address;
+                $info->{email_error}   = $_;
+
+                logaction( 'GENTLENUDGE', uc($type) . "_ERROR", undef,
+                    JSON->new->pretty->encode($info), 'cron' );
+
+                die "Mail not sent: $_";
+            };
+        }
+
+        logaction( 'GENTLENUDGE', uc($type), undef,
+            JSON->new->pretty->encode($info), 'cron' );
+
+        $dbh->commit();
+    } catch {
+        $info->{error} = $_;
+        logaction( 'GENTLENUDGE', uc($type) . "_ERROR", undef,
+            json->new->pretty->encode($info), 'cron' );
+        $dbh->rollback();
+        die "error in run_update_report_and_clear_paid: $_";
     };
-
-    my $columns = [ "borrowernumber", "surname", "firstname", "cardnumber", "Due" ];
-
-    my $csv =
-      @ums_updates
-      ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $columns )
-      : 'No qualifying records';
-    warn "CSV:\n" . $csv if $debug >= 2;
-
-    write_file( $file_path, $csv )
-      if $archive_dir;
-    warn "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
-      if $archive_dir && $debug;
-
-    my $sftp_host     = $self->retrieve_data('host');
-    my $sftp_username = $self->retrieve_data('username');
-    my $sftp_password = $self->retrieve_data('password');
-
-    my $email_from = C4::Context->preference('KohaAdminEmailAddress');
-    my $email_to   = $self->retrieve_data('unique_email');
-    my $email_cc   = $self->retrieve_data('cc_email');
-
-    if ($sftp_host) {
-        $info->{sftp_host}     = $sftp_host;
-        $info->{sftp_username} = $sftp_username;
-
-        my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'cust2unique';
-
-        my $sftp = Net::SFTP::Foreign->new(
-            host     => $sftp_host,
-            user     => $sftp_username,
-            port     => 22,
-            password => $sftp_password
-        );
-
-        try {
-            $sftp->die_on_error("Unable to establish SFTP connection");
-            $sftp->setcwd($directory)
-              or die "unable to change cwd: " . $sftp->error;
-            $sftp->put( $file_path, $filename )
-              or die "put failed: " . $sftp->error;
-        }
-        catch {
-            $info->{sftp_failed} = 'true';
-            $info->{sftp_error}  = $_;
-        }
-    }
-
-    foreach my $email_address ( $email_to, $email_cc ) {
-        next unless $email_address;
-        warn "ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address" if $debug >= 0;
-
-        my $p = {
-            to      => $email_address,
-            from    => $email_from,
-            subject => sprintf( "UMS %s for %s",
-                ucfirst($type), C4::Context->preference('LibraryName') ),
-        };
-        my $email = Koha::Email->new($p);
-
-        $email->attach(
-            Encode::encode_utf8($csv),
-            content_type => "text/csv",
-            filename     => $filename,
-            name         => $filename,
-            disposition  => 'attachment',
-        );
-
-        my $smtp_server = Koha::SMTP::Servers->get_default;
-        $email->transport( $smtp_server->transport );
-
-        try {
-            $email->send_or_die unless $no_email;
-        }
-        catch {
-            $info->{email_failed}  = 'true';
-            $info->{email_address} = $email_address;
-            $info->{email_error}   = $_;
-
-            warn "Mail not sent: $_";
-        };
-    }
-
-    logaction( 'GENTLENUDGE', uc($type), undef,
-        JSON->new->pretty->encode($info), 'cron' );
 }
 
 sub clear_patron_from_collections {
