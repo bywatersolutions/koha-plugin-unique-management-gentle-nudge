@@ -233,6 +233,7 @@ sub run_submissions_report {
     $dbh->{AutoCommit} = 0; # enable transactions 
     $dbh->{RaiseError} = 1; # die if a query has problems
 
+    my $info = {};
     try {
         my $sth;
 
@@ -412,7 +413,7 @@ sub run_submissions_report {
         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
         my $email_cc   = $self->retrieve_data('cc_email');
 
-        my $info = {
+        $info = {
             count     => scalar @ums_new_submissions,
             filename  => $filename,
             file_path => $file_path,
@@ -503,6 +504,7 @@ sub run_update_report_and_clear_paid {
     $dbh->{AutoCommit} = 0; # enable transactions 
     $dbh->{RaiseError} = 1; # die if a query has problems
 
+    my $info = {};
     try {
         my $sth;
 
@@ -570,7 +572,7 @@ sub run_update_report_and_clear_paid {
         my $filename  = "ums-$type-$params->{date}.csv";
         my $file_path = "$archive_dir/$filename";
 
-        my $info = {
+        $info = {
             count     => scalar @ums_updates,
             type      => $type,
             filename  => $filename,
