@@ -277,8 +277,8 @@ sub run_submissions_report {
                 LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
                     LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
                     LEFT JOIN ( SELECT
-                            REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ",", "" ) AS Due,
-                            REPLACE( FORMAT( SUM(accountlines.amountoutstanding) + $params->{processing_fee}, 2), ",", "" ) AS DuePlus,
+                            REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ',', '' ) AS Due,
+                            REPLACE( FORMAT( SUM(accountlines.amountoutstanding) + $params->{processing_fee}, 2), ',', '' ) AS DuePlus,
                             borrowernumber
                             FROM   accountlines
                             GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
