@@ -504,6 +504,7 @@ sub run_update_report_and_clear_paid {
     $dbh->{AutoCommit} = 0; # enable transactions 
     $dbh->{RaiseError} = 1; # die if a query has problems
 
+    my $type = $params->{send_sync_report} ? 'sync' : 'updates';
     my $info = {};
     try {
         my $sth;
@@ -566,7 +567,6 @@ sub run_update_report_and_clear_paid {
         }
 
         ## Email the results
-        my $type = $params->{send_sync_report} ? 'sync' : 'updates';
 
         $archive_dir ||= "/tmp";
         my $filename  = "ums-$type-$params->{date}.csv";
