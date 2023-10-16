@@ -372,7 +372,7 @@ sub run_submissions_report {
                     interface   => 'cron',
                     type        => 'MANUAL',
                 }
-            );
+            ) if $params->{processing_fee};
 
             push( @ums_new_submissions, $r );
         }
