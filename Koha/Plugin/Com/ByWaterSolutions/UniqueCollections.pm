@@ -685,7 +685,7 @@ sub run_update_report_and_clear_paid {
     } catch {
         $info->{error} = $_;
         logaction( 'GENTLENUDGE', uc($type) . "_ERROR", undef,
-            json->new->pretty->encode($info), 'cron' );
+            JSON->new->pretty->encode($info), 'cron' );
         $dbh->rollback();
         die "error in run_update_report_and_clear_paid: $_";
     };
