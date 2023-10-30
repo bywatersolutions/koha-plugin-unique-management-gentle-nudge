@@ -78,6 +78,7 @@ sub configure {
         ## Grab the values we already have for our settings, if any exist
         $template->param(
             run_on_dow        => $self->retrieve_data('run_on_dow'),
+            require_lost_fee  => $self->retrieve_data('require_lost_fee'),
             categorycodes     => $self->retrieve_data('categorycodes'),
             fees_threshold    => $self->retrieve_data('fees_threshold'),
             processing_fee    => $self->retrieve_data('processing_fee') || 0,
@@ -104,6 +105,7 @@ sub configure {
         $self->store_data(
             {
                 run_on_dow        => $cgi->param('run_on_dow'),
+                require_lost_fee  => $cgi->param('require_lost_fee'),
                 categorycodes     => $cgi->param('categorycodes'),
                 fees_threshold    => $cgi->param('fees_threshold'),
                 processing_fee    => $cgi->param('processing_fee') || 0,
@@ -184,16 +186,17 @@ sub cronjob_nightly {
 
     my $params = { send_sync_report => $p->{send_sync_report} };
 
-    $params->{fees_threshold}    = $self->retrieve_data('fees_threshold');
-    $params->{processing_fee}    = $self->retrieve_data('processing_fee');
-    $params->{collections_flag}  = $self->retrieve_data('collections_flag');
-    $params->{fees_starting_age} = $self->retrieve_data('fees_starting_age');
-    $params->{fees_ending_age}   = $self->retrieve_data('fees_ending_age');
-    $params->{auto_clear_paid}   = $self->retrieve_data('auto_clear_paid');
-    $params->{add_restriction}   = $self->retrieve_data('add_restriction');
+    $params->{require_lost_fee}   = $self->retrieve_data('require_lost_fee');
+    $params->{fees_threshold}     = $self->retrieve_data('fees_threshold');
+    $params->{processing_fee}     = $self->retrieve_data('processing_fee');
+    $params->{collections_flag}   = $self->retrieve_data('collections_flag');
+    $params->{fees_starting_age}  = $self->retrieve_data('fees_starting_age');
+    $params->{fees_ending_age}    = $self->retrieve_data('fees_ending_age');
+    $params->{auto_clear_paid}    = $self->retrieve_data('auto_clear_paid');
+    $params->{add_restriction}    = $self->retrieve_data('add_restriction');
     $params->{remove_restriction} = $self->retrieve_data('remove_restriction');
-    $params->{age_limitation}    = $self->retrieve_data('age_limitation');
-    $params->{auto_clear_paid_threshold} = $self->retrieve_data('auto_clear_paid_threshold');
+    $params->{age_limitation}     = $self->retrieve_data('age_limitation');
+    $params->{auto_clear_paid_threshold}       = $self->retrieve_data('auto_clear_paid_threshold');
     $params->{fees_created_before_date_filter} = $self->retrieve_data('fees_created_before_date_filter');
 
     # Starting age should be the large of the two numbers
@@ -275,18 +278,29 @@ sub run_submissions_report {
             } if $params->{flag_type} eq 'attribute_field';
 
         $ums_submission_query .= qq{
-                LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
-                    LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
-                    LEFT JOIN ( SELECT
-                            REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ',', '' ) AS Due,
-                            REPLACE( FORMAT( SUM(accountlines.amountoutstanding) + $params->{processing_fee}, 2), ',', '' ) AS DuePlus,
-                            borrowernumber
-                            FROM   accountlines
-                            GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
-                    WHERE  1=1
-                    AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
-                    AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
+            LEFT JOIN (
+              SELECT COUNT(*) AS lost_fees_count
+              FROM accountlines 
+              WHERE debit_type_code = 'LOST' 
+                AND amountoutstanding > 0
+              GROUP BY borrowernumber
+            ) AS lost_fees_count ON ( borrowers.borrowernumber = sub.borrowernumber)
+            LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
+            LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
+            LEFT JOIN ( SELECT
+              REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ',', '' ) AS Due,
+              REPLACE( FORMAT( SUM(accountlines.amountoutstanding) + $params->{processing_fee}, 2), ',', '' ) AS DuePlus,
+                  borrowernumber
+              FROM accountlines
+              GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
+            WHERE  1=1
+              AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
+              AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
             };
+
+        $ums_submission_query .= qq{
+              AND lost_fees_count.lost_fees_count > 0
+            } if $params->{require_lost_fee} && $params->{require_lost_fee} eq 'yes';
 
         $ums_submission_query .= qq{
                 AND ( borrowers.$params->{collections_flag} = 'no' OR borrowers.$params->{collections_flag} IS NULL OR borrowers.$params->{collections_flag} = "" )
