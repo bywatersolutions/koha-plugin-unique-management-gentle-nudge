@@ -74,12 +74,12 @@
           </div>
 
           <div class="form-group">
-            <label for="require_lost_fee">Day of week to run on</label>
+            <label for="require_lost_fee">Require lost fee</label>
             <select name="require_lost_fee" class="form-control">
               <option value="no" [% IF require_lost_fee == "no" %]selected="selected"[% END %]>No</option>
               <option value="yes" [% IF require_lost_fee == "yes" %]selected="selected"[% END %]>Yes</option>
             </select>
-            <span class="help-block">Please ensure that your system administrator has enabled the cronjob <em>plugins_nightly.pl</em>.</span>
+            <span class="help-block">If enabled, a patron will not be sent to collections unless at least one of their outstanding fees is a lost fee of any amount.</span>
           </div>
 
           <div class="form-group">
