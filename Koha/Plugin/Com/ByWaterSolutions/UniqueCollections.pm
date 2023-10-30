@@ -715,11 +715,9 @@ sub clear_patron_from_collections {
         if ($a) {
             my $schema = Koha::Database->schema;
             $schema->txn_do(
-                sub {
-                    $a->delete();
-                    $a->attribute(0);
-                    Koha::Patron::Attribute->new( $a->unblessed )->store();
-                }
+                $a->delete();
+                $a->attribute(0);
+                Koha::Patron::Attribute->new( $a->unblessed )->store();
             );
         }
     }
