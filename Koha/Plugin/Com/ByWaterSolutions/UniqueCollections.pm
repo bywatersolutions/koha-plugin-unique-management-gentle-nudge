@@ -40,6 +40,10 @@ our $metadata = {
 'Plugin to forward messages to Unique Collections for processing and sending',
 };
 
+our $json = JSON->new;
+$json->pretty(1);
+$json->convert_blessed(1);
+
 =head3 new
 
 =cut
@@ -494,18 +498,18 @@ sub run_submissions_report {
                 $info->{email_error}   = $_;
 
                 logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS_ERROR', undef,
-                    JSON->new->pretty->encode($info), 'cron' );
+                    $json->encode($info), 'cron' );
 
                 die "Mail not sent: $_";
             };
         }
 
         logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS', undef,
-            JSON->new->pretty->encode($info), 'cron' );
+            $json->encode($info), 'cron' );
     } catch {
         $info->{error} = $_;
         logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS_ERROR', undef,
-            JSON->new->pretty->encode($info), 'cron' );
+            $json->encode($info), 'cron' );
         $dbh->rollback(); 
         die "error in run_update_report_and_clear_paid: $_";
     };
@@ -672,20 +676,20 @@ sub run_update_report_and_clear_paid {
                 $info->{email_error}   = $_;
 
                 logaction( 'GENTLENUDGE', uc($type) . "_ERROR", undef,
-                    JSON->new->pretty->encode($info), 'cron' );
+                    $json->encode($info), 'cron' );
 
                 die "Mail not sent: $_";
             };
         }
 
         logaction( 'GENTLENUDGE', uc($type), undef,
-            JSON->new->pretty->encode($info), 'cron' );
+            $json->encode($info), 'cron' );
 
         $dbh->commit();
     } catch {
         $info->{error} = $_;
         logaction( 'GENTLENUDGE', uc($type) . "_ERROR", undef,
-            JSON->new->pretty->encode($info), 'cron' );
+            $json->encode($info), 'cron' );
         $dbh->rollback();
         die "error in run_update_report_and_clear_paid: $_";
     };
