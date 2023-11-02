@@ -282,21 +282,25 @@ sub run_submissions_report {
             } if $params->{flag_type} eq 'attribute_field';
 
         $ums_submission_query .= qq{
+            LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
+
             LEFT JOIN (
-              SELECT COUNT(*) AS lost_fees_count
-              FROM accountlines 
-              WHERE debit_type_code = 'LOST' 
+              SELECT borrowernumber, COUNT(*) AS lost_fees_count
+              FROM accountlines
+              WHERE debit_type_code = 'LOST'
                 AND amountoutstanding > 0
               GROUP BY borrowernumber
-            ) AS lost_fees_count ON ( borrowers.borrowernumber = sub.borrowernumber)
-            LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
+            ) AS lost_fees_count ON ( lost_fees_count.borrowernumber = borrowers.borrowernumber)
+
             LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
+
             LEFT JOIN ( SELECT
               REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ',', '' ) AS Due,
               REPLACE( FORMAT( SUM(accountlines.amountoutstanding) + $params->{processing_fee}, 2), ',', '' ) AS DuePlus,
                   borrowernumber
               FROM accountlines
               GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
+
             WHERE  1=1
               AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
               AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
