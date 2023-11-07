@@ -36,8 +36,7 @@ our $metadata = {
     minimum_version => $MINIMUM_VERSION,
     maximum_version => undef,
     version         => $VERSION,
-    description     =>
-'Plugin to forward messages to Unique Collections for processing and sending',
+    description     => 'Plugin to forward messages to Unique Collections for processing and sending',
 };
 
 our $json = JSON->new;
@@ -81,52 +80,51 @@ sub configure {
 
         ## Grab the values we already have for our settings, if any exist
         $template->param(
-            run_on_dow        => $self->retrieve_data('run_on_dow'),
-            require_lost_fee  => $self->retrieve_data('require_lost_fee'),
-            categorycodes     => $self->retrieve_data('categorycodes'),
-            fees_threshold    => $self->retrieve_data('fees_threshold'),
-            processing_fee    => $self->retrieve_data('processing_fee') || 0,
-            unique_email      => $self->retrieve_data('unique_email'),
-            cc_email          => $self->retrieve_data('cc_email'),
-            collections_flag  => $self->retrieve_data('collections_flag'),
-            fees_starting_age => $self->retrieve_data('fees_starting_age') || 60,
-            fees_ending_age   => $self->retrieve_data('fees_ending_age') || 90,
-            auto_clear_paid => $self->retrieve_data('auto_clear_paid'),
-            add_restriction => $self->retrieve_data('add_restriction'),
-            remove_restriction => $self->retrieve_data('remove_restriction'),
-            age_limitation  => $self->retrieve_data('age_limitation'),
-            host            => $self->retrieve_data('host'),
-            username        => $self->retrieve_data('username'),
-            password        => $self->retrieve_data('password'),
-            attributes      => scalar Koha::Patron::Attribute::Types->search(),
-            auto_clear_paid_threshold => $self->retrieve_data('auto_clear_paid_threshold'),
+            run_on_dow                      => $self->retrieve_data('run_on_dow'),
+            require_lost_fee                => $self->retrieve_data('require_lost_fee'),
+            categorycodes                   => $self->retrieve_data('categorycodes'),
+            fees_threshold                  => $self->retrieve_data('fees_threshold'),
+            processing_fee                  => $self->retrieve_data('processing_fee') || 0,
+            unique_email                    => $self->retrieve_data('unique_email'),
+            cc_email                        => $self->retrieve_data('cc_email'),
+            collections_flag                => $self->retrieve_data('collections_flag'),
+            fees_starting_age               => $self->retrieve_data('fees_starting_age') || 60,
+            fees_ending_age                 => $self->retrieve_data('fees_ending_age')   || 90,
+            auto_clear_paid                 => $self->retrieve_data('auto_clear_paid'),
+            add_restriction                 => $self->retrieve_data('add_restriction'),
+            remove_restriction              => $self->retrieve_data('remove_restriction'),
+            age_limitation                  => $self->retrieve_data('age_limitation'),
+            host                            => $self->retrieve_data('host'),
+            username                        => $self->retrieve_data('username'),
+            password                        => $self->retrieve_data('password'),
+            attributes                      => scalar Koha::Patron::Attribute::Types->search(),
+            auto_clear_paid_threshold       => $self->retrieve_data('auto_clear_paid_threshold'),
             fees_created_before_date_filter => $self->retrieve_data('fees_created_before_date_filter'),
         );
 
         $self->output_html( $template->output() );
-    }
-    else {
+    } else {
         $self->store_data(
             {
-                run_on_dow        => $cgi->param('run_on_dow'),
-                require_lost_fee  => $cgi->param('require_lost_fee'),
-                categorycodes     => $cgi->param('categorycodes'),
-                fees_threshold    => $cgi->param('fees_threshold'),
-                processing_fee    => $cgi->param('processing_fee') || 0,
-                unique_email      => $cgi->param('unique_email'),
-                cc_email          => $cgi->param('cc_email'),
-                collections_flag  => $cgi->param('collections_flag'),
-                fees_starting_age => $cgi->param('fees_starting_age'),
-                fees_ending_age   => $cgi->param('fees_ending_age'),
-                auto_clear_paid   => $cgi->param('auto_clear_paid'),
-                add_restriction   => $cgi->param('add_restriction'),
-                remove_restriction   => $cgi->param('remove_restriction'),
-                age_limitation    => $cgi->param('age_limitation'),
-                host              => $cgi->param('host'),
-                username          => $cgi->param('username'),
-                password          => $cgi->param('password'),
-                auto_clear_paid_threshold   => $cgi->param('auto_clear_paid_threshold'),
-                fees_created_before_date_filter   => $cgi->param('fees_created_before_date_filter'),
+                run_on_dow                      => $cgi->param('run_on_dow'),
+                require_lost_fee                => $cgi->param('require_lost_fee'),
+                categorycodes                   => $cgi->param('categorycodes'),
+                fees_threshold                  => $cgi->param('fees_threshold'),
+                processing_fee                  => $cgi->param('processing_fee') || 0,
+                unique_email                    => $cgi->param('unique_email'),
+                cc_email                        => $cgi->param('cc_email'),
+                collections_flag                => $cgi->param('collections_flag'),
+                fees_starting_age               => $cgi->param('fees_starting_age'),
+                fees_ending_age                 => $cgi->param('fees_ending_age'),
+                auto_clear_paid                 => $cgi->param('auto_clear_paid'),
+                add_restriction                 => $cgi->param('add_restriction'),
+                remove_restriction              => $cgi->param('remove_restriction'),
+                age_limitation                  => $cgi->param('age_limitation'),
+                host                            => $cgi->param('host'),
+                username                        => $cgi->param('username'),
+                password                        => $cgi->param('password'),
+                auto_clear_paid_threshold       => $cgi->param('auto_clear_paid_threshold'),
+                fees_created_before_date_filter => $cgi->param('fees_created_before_date_filter'),
             }
         );
         $self->go_home();
@@ -160,10 +158,10 @@ sub cronjob_nightly {
                 next unless $f =~ /csv$/;
 
                 my $threshold_filename =
-                  $f =~ /^ums-new-submissions/ ? $thresholds->{new_submissions}
-                  : $f =~ /^ums-sync/          ? $thresholds->{sync}
-                  : $f =~ /^ums-updates/       ? $thresholds->{updates}
-                  :                              undef;
+                      $f =~ /^ums-new-submissions/ ? $thresholds->{new_submissions}
+                    : $f =~ /^ums-sync/            ? $thresholds->{sync}
+                    : $f =~ /^ums-updates/         ? $thresholds->{updates}
+                    :                                undef;
 
                 next unless $threshold_filename;
 
@@ -171,8 +169,7 @@ sub cronjob_nightly {
                     unlink( $archive_dir . "/" . $f );
                 }
             }
-        }
-        else {
+        } else {
             make_path $archive_dir or die "Failed to create path: $archive_dir";
         }
     }
@@ -180,39 +177,36 @@ sub cronjob_nightly {
     my $run_weeklys;
     my $run_on_dow = $self->retrieve_data('run_on_dow');
     unless ( (localtime)[6] == $run_on_dow ) {
-        say "Run on Day of Week $run_on_dow does not match current day of week "
-          . (localtime)[6]
-          if $debug >= 1;
-    }
-    else {
+        say "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6]
+            if $debug >= 1;
+    } else {
         $run_weeklys = 1;
     }
 
     my $params = { send_sync_report => $p->{send_sync_report} };
 
-    $params->{require_lost_fee}   = $self->retrieve_data('require_lost_fee');
-    $params->{fees_threshold}     = $self->retrieve_data('fees_threshold');
-    $params->{processing_fee}     = $self->retrieve_data('processing_fee');
-    $params->{collections_flag}   = $self->retrieve_data('collections_flag');
-    $params->{fees_starting_age}  = $self->retrieve_data('fees_starting_age');
-    $params->{fees_ending_age}    = $self->retrieve_data('fees_ending_age');
-    $params->{auto_clear_paid}    = $self->retrieve_data('auto_clear_paid');
-    $params->{add_restriction}    = $self->retrieve_data('add_restriction');
-    $params->{remove_restriction} = $self->retrieve_data('remove_restriction');
-    $params->{age_limitation}     = $self->retrieve_data('age_limitation');
+    $params->{require_lost_fee}                = $self->retrieve_data('require_lost_fee');
+    $params->{fees_threshold}                  = $self->retrieve_data('fees_threshold');
+    $params->{processing_fee}                  = $self->retrieve_data('processing_fee');
+    $params->{collections_flag}                = $self->retrieve_data('collections_flag');
+    $params->{fees_starting_age}               = $self->retrieve_data('fees_starting_age');
+    $params->{fees_ending_age}                 = $self->retrieve_data('fees_ending_age');
+    $params->{auto_clear_paid}                 = $self->retrieve_data('auto_clear_paid');
+    $params->{add_restriction}                 = $self->retrieve_data('add_restriction');
+    $params->{remove_restriction}              = $self->retrieve_data('remove_restriction');
+    $params->{age_limitation}                  = $self->retrieve_data('age_limitation');
     $params->{auto_clear_paid_threshold}       = $self->retrieve_data('auto_clear_paid_threshold');
     $params->{fees_created_before_date_filter} = $self->retrieve_data('fees_created_before_date_filter');
 
     # Starting age should be the large of the two numbers
     ( $params->{fees_starting_age}, $params->{fees_ending_age} ) =
-      ( $params->{fees_ending_age}, $params->{fees_starting_age} )
-      if $params->{fees_starting_age} < $params->{fees_ending_age};
+        ( $params->{fees_ending_age}, $params->{fees_starting_age} )
+        if $params->{fees_starting_age} < $params->{fees_ending_age};
 
     $params->{flag_type} =
-         $params->{collections_flag} eq 'sort1'
-      || $params->{collections_flag} eq 'sort2'
-      ? 'borrower_field'
-      : 'attribute_field';
+        $params->{collections_flag} eq 'sort1' || $params->{collections_flag} eq 'sort2'
+        ? 'borrower_field'
+        : 'attribute_field';
 
     my @categorycodes = split( /,/, $self->retrieve_data('categorycodes') );
     $params->{categorycodes} = \@categorycodes;
@@ -223,8 +217,7 @@ sub cronjob_nightly {
     ### Process new submissions
     if ( $run_weeklys && !$params->{send_sync_report} ) {
         $self->run_submissions_report($params);
-    }
-    elsif ( !$params->{send_sync_report} ) {
+    } elsif ( !$params->{send_sync_report} ) {
         say "NOT THE DOW TO RUN SUBMISSIONS\n\n" if $debug >= 1;
     }
 
@@ -237,8 +230,8 @@ sub run_submissions_report {
     my $age_limitation = $params->{age_limitation};
 
     my $dbh = C4::Context->dbh;
-    $dbh->{AutoCommit} = 0; # enable transactions
-    $dbh->{RaiseError} = 1; # die if a query has problems
+    $dbh->{AutoCommit} = 0;    # enable transactions
+    $dbh->{RaiseError} = 1;    # die if a query has problems
 
     my $info = {};
     try {
@@ -325,11 +318,11 @@ sub run_submissions_report {
                 };
         }
 
-        if ($age_limitation eq 'yes') {
+        if ( $age_limitation eq 'yes' ) {
             $ums_submission_query .= qq{ AND TIMESTAMPDIFF( YEAR, borrowers.dateofbirth, CURDATE() ) >= 18 };
         }
 
-        if ($params->{fees_created_before_date_filter}) {
+        if ( $params->{fees_created_before_date_filter} ) {
             $ums_submission_query .= qq{ AND accountlines.date > "$params->{fees_created_before_date_filter}" };
         }
 
@@ -357,7 +350,7 @@ sub run_submissions_report {
                         borrowernumber => $patron->borrowernumber,
                         expiration     => undef,
                         type           => 'MANUAL',
-                        comment => "Patron sent to collections on $params->{date}",
+                        comment        => "Patron sent to collections on $params->{date}",
                     }
                 );
             }
@@ -375,8 +368,7 @@ sub run_submissions_report {
 
                 if ($a) {
                     $a->attribute(1)->store();
-                }
-                else {
+                } else {
                     Koha::Patron::Attribute->new(
                         {
                             borrowernumber => $patron->id,
@@ -414,9 +406,9 @@ sub run_submissions_report {
 
         ## Email the results
         my $csv =
-          @ums_new_submissions
-          ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
-          : 'No qualifying records';
+            @ums_new_submissions
+            ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
+            : 'No qualifying records';
         say "CSV:\n" . $csv if $debug >= 2;
 
         $archive_dir ||= "/tmp";
@@ -457,11 +449,10 @@ sub run_submissions_report {
             try {
                 $sftp->die_on_error("Unable to establish SFTP connection");
                 $sftp->setcwd($directory)
-                  or die "unable to change cwd: " . $sftp->error;
+                    or die "unable to change cwd: " . $sftp->error;
                 $sftp->put( $file_path, $filename )
-                  or die "put failed: " . $sftp->error;
-            }
-            catch {
+                    or die "put failed: " . $sftp->error;
+            } catch {
                 $info->{sftp_failed} = 'true';
                 $info->{sftp_error}  = $_;
             }
@@ -477,8 +468,7 @@ sub run_submissions_report {
             my $p = {
                 to      => $email_address,
                 from    => $email_from,
-                subject => "UMS New Submissions for "
-                  . C4::Context->preference('LibraryName'),
+                subject => "UMS New Submissions for " . C4::Context->preference('LibraryName'),
             };
             my $email = Koha::Email->new($p);
 
@@ -495,25 +485,30 @@ sub run_submissions_report {
 
             try {
                 $email->send_or_die unless $no_email;
-            }
-            catch {
+            } catch {
                 $info->{email_failed}  = 'true';
                 $info->{email_address} = $email_address;
                 $info->{email_error}   = $_;
 
-                logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS_ERROR', undef,
-                    $json->encode($info), 'cron' );
+                logaction(
+                    'GENTLENUDGE',        'NEW_SUBMISSIONS_ERROR', undef,
+                    $json->encode($info), 'cron'
+                );
 
                 die "Mail not sent: $_";
             };
         }
 
-        logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS', undef,
-            $json->encode($info), 'cron' );
+        logaction(
+            'GENTLENUDGE',        'NEW_SUBMISSIONS', undef,
+            $json->encode($info), 'cron'
+        );
     } catch {
         $info->{error} = $_;
-        logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS_ERROR', undef,
-            $json->encode($info), 'cron' );
+        logaction(
+            'GENTLENUDGE',        'NEW_SUBMISSIONS_ERROR', undef,
+            $json->encode($info), 'cron'
+        );
         $dbh->rollback();
         die "error in run_update_report_and_clear_paid: $_";
     };
@@ -523,7 +518,7 @@ sub run_update_report_and_clear_paid {
     my ( $self, $params ) = @_;
 
     my $dbh = C4::Context->dbh;
-    $dbh->{RaiseError} = 1; # die if a query has problems
+    $dbh->{RaiseError} = 1;    # die if a query has problems
 
     my $type = $params->{send_sync_report} ? 'sync' : 'updates';
     my $info = {};
@@ -564,7 +559,7 @@ sub run_update_report_and_clear_paid {
         };
 
         say "UMS UPDATE QUERY:\n$ums_update_query"
-          if ( !$params->{send_sync_report} ) && $debug >= 0;
+            if ( !$params->{send_sync_report} ) && $debug >= 0;
 
         $sth = $dbh->prepare($ums_update_query);
         $sth->execute();
@@ -573,16 +568,15 @@ sub run_update_report_and_clear_paid {
             say "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
             push( @ums_updates, $r );
 
-	    my $due = $r->{Due} || 0;
-	    $due =~ s/,//;
+            my $due = $r->{Due} || 0;
+            $due =~ s/,//;
             if ( $params->{auto_clear_paid} eq 'yes' && $due <= $params->{auto_clear_paid_threshold} ) {
                 $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
                 if ( $params->{remove_restriction} ) {
                     Koha::Patron::Restrictions->search(
                         {
                             borrowernumber => $r->{borrowernumber},
-                            comment        =>
-                              { 'like' => "Patron sent to collections on %" }
+                            comment        => { 'like' => "Patron sent to collections on %" }
                         }
                     )->delete();
                 }
@@ -605,15 +599,15 @@ sub run_update_report_and_clear_paid {
         my $columns = [ "borrowernumber", "surname", "firstname", "cardnumber", "Due" ];
 
         my $csv =
-          @ums_updates
-          ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $columns )
-          : 'No qualifying records';
+            @ums_updates
+            ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $columns )
+            : 'No qualifying records';
         say "CSV:\n" . $csv if $debug >= 2;
 
         write_file( $file_path, $csv )
-          if $archive_dir;
+            if $archive_dir;
         say "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
-          if $archive_dir && $debug;
+            if $archive_dir && $debug;
 
         my $sftp_host     = $self->retrieve_data('host');
         my $sftp_username = $self->retrieve_data('username');
@@ -639,11 +633,10 @@ sub run_update_report_and_clear_paid {
             try {
                 $sftp->die_on_error("Unable to establish SFTP connection");
                 $sftp->setcwd($directory)
-                  or die "unable to change cwd: " . $sftp->error;
+                    or die "unable to change cwd: " . $sftp->error;
                 $sftp->put( $file_path, $filename )
-                  or die "put failed: " . $sftp->error;
-            }
-            catch {
+                    or die "put failed: " . $sftp->error;
+            } catch {
                 $info->{sftp_failed} = 'true';
                 $info->{sftp_error}  = $_;
             }
@@ -656,8 +649,10 @@ sub run_update_report_and_clear_paid {
             my $p = {
                 to      => $email_address,
                 from    => $email_from,
-                subject => sprintf( "UMS %s for %s",
-                    ucfirst($type), C4::Context->preference('LibraryName') ),
+                subject => sprintf(
+                    "UMS %s for %s",
+                    ucfirst($type), C4::Context->preference('LibraryName')
+                ),
             };
             my $email = Koha::Email->new($p);
 
@@ -674,26 +669,31 @@ sub run_update_report_and_clear_paid {
 
             try {
                 $email->send_or_die unless $no_email;
-            }
-            catch {
+            } catch {
                 $info->{email_failed}  = 'true';
                 $info->{email_address} = $email_address;
                 $info->{email_error}   = $_;
 
-                logaction( 'GENTLENUDGE', uc($type) . "_ERROR", undef,
-                    $json->encode($info), 'cron' );
+                logaction(
+                    'GENTLENUDGE',        uc($type) . "_ERROR", undef,
+                    $json->encode($info), 'cron'
+                );
 
                 die "Mail not sent: $_";
             };
         }
 
-        logaction( 'GENTLENUDGE', uc($type), undef,
-            $json->encode($info), 'cron' );
+        logaction(
+            'GENTLENUDGE',        uc($type), undef,
+            $json->encode($info), 'cron'
+        );
 
     } catch {
         $info->{error} = $_;
-        logaction( 'GENTLENUDGE', uc($type) . "_ERROR", undef,
-            $json->encode($info), 'cron' );
+        logaction(
+            'GENTLENUDGE',        uc($type) . "_ERROR", undef,
+            $json->encode($info), 'cron'
+        );
         die "error in run_update_report_and_clear_paid: $_";
     };
 }
