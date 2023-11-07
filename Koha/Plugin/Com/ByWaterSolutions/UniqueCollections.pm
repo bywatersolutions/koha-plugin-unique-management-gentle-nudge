@@ -180,7 +180,7 @@ sub cronjob_nightly {
     my $run_weeklys;
     my $run_on_dow = $self->retrieve_data('run_on_dow');
     unless ( (localtime)[6] == $run_on_dow ) {
-        warn "Run on Day of Week $run_on_dow does not match current day of week "
+        say "Run on Day of Week $run_on_dow does not match current day of week "
           . (localtime)[6]
           if $debug >= 1;
     }
@@ -225,7 +225,7 @@ sub cronjob_nightly {
         $self->run_submissions_report($params);
     }
     elsif ( !$params->{send_sync_report} ) {
-        warn "NOT THE DOW TO RUN SUBMISSIONS\n\n" if $debug >= 1;
+        say "NOT THE DOW TO RUN SUBMISSIONS\n\n" if $debug >= 1;
     }
 
     ### Process UMS Update Report
@@ -237,7 +237,7 @@ sub run_submissions_report {
     my $age_limitation = $params->{age_limitation};
 
     my $dbh = C4::Context->dbh;
-    $dbh->{AutoCommit} = 0; # enable transactions 
+    $dbh->{AutoCommit} = 0; # enable transactions
     $dbh->{RaiseError} = 1; # die if a query has problems
 
     my $info = {};
@@ -332,21 +332,21 @@ sub run_submissions_report {
         if ($params->{fees_created_before_date_filter}) {
             $ums_submission_query .= qq{ AND accountlines.date > "$params->{fees_created_before_date_filter}" };
         }
-        
+
         $ums_submission_query .= qq{
                 GROUP BY borrowers.borrowernumber
                     HAVING Sum(amountoutstanding) >= $params->{fees_threshold}
                     ORDER BY borrowers.surname ASC
             };
 
-        warn "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug >= 0;
+        say "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug >= 0;
 
 ### Update new submissions patrons, add fee, mark as being in collections
         $sth = $dbh->prepare($ums_submission_query);
         $sth->execute();
         my @ums_new_submissions;
         while ( my $r = $sth->fetchrow_hashref ) {
-            warn "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
+            say "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
 
             my $patron = Koha::Patrons->find( $r->{borrowernumber} );
             next unless $patron;
@@ -417,7 +417,7 @@ sub run_submissions_report {
           @ums_new_submissions
           ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
           : 'No qualifying records';
-        warn "CSV:\n" . $csv if $debug >= 2;
+        say "CSV:\n" . $csv if $debug >= 2;
 
         $archive_dir ||= "/tmp";
 
@@ -425,7 +425,7 @@ sub run_submissions_report {
         my $file_path = "$archive_dir/$filename";
 
         write_file( $file_path, $csv );
-        warn "ARCHIVE WRITTEN TO $file_path" if $debug;
+        say "ARCHIVE WRITTEN TO $file_path" if $debug;
 
         my $sftp_host     = $self->retrieve_data('host');
         my $sftp_username = $self->retrieve_data('username');
@@ -469,7 +469,7 @@ sub run_submissions_report {
 
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
-            warn "ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address" if $debug >= 0;
+            say "ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address" if $debug >= 0;
 
             $info->{email_to}   = $email_address;
             $info->{email_from} = $email_from;
@@ -514,7 +514,7 @@ sub run_submissions_report {
         $info->{error} = $_;
         logaction( 'GENTLENUDGE', 'NEW_SUBMISSIONS_ERROR', undef,
             $json->encode($info), 'cron' );
-        $dbh->rollback(); 
+        $dbh->rollback();
         die "error in run_update_report_and_clear_paid: $_";
     };
 }
@@ -523,7 +523,6 @@ sub run_update_report_and_clear_paid {
     my ( $self, $params ) = @_;
 
     my $dbh = C4::Context->dbh;
-    $dbh->{AutoCommit} = 0; # enable transactions 
     $dbh->{RaiseError} = 1; # die if a query has problems
 
     my $type = $params->{send_sync_report} ? 'sync' : 'updates';
@@ -564,17 +563,19 @@ sub run_update_report_and_clear_paid {
                 ORDER BY borrowers.surname ASC
         };
 
-        warn "UMS UPDATE QUERY:\n$ums_update_query"
+        say "UMS UPDATE QUERY:\n$ums_update_query"
           if ( !$params->{send_sync_report} ) && $debug >= 0;
 
         $sth = $dbh->prepare($ums_update_query);
         $sth->execute();
         my @ums_updates;
         while ( my $r = $sth->fetchrow_hashref ) {
-            warn "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
+            say "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
             push( @ums_updates, $r );
 
-            if ( $params->{auto_clear_paid} eq 'yes' && $r->{Due} <= $params->{auto_clear_paid_threshold} ) {
+	    my $due = $r->{Due} || 0;
+	    $due =~ s/,//;
+            if ( $params->{auto_clear_paid} eq 'yes' && $due <= $params->{auto_clear_paid_threshold} ) {
                 $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
                 if ( $params->{remove_restriction} ) {
                     Koha::Patron::Restrictions->search(
@@ -607,11 +608,11 @@ sub run_update_report_and_clear_paid {
           @ums_updates
           ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $columns )
           : 'No qualifying records';
-        warn "CSV:\n" . $csv if $debug >= 2;
+        say "CSV:\n" . $csv if $debug >= 2;
 
         write_file( $file_path, $csv )
           if $archive_dir;
-        warn "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
+        say "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
           if $archive_dir && $debug;
 
         my $sftp_host     = $self->retrieve_data('host');
@@ -650,7 +651,7 @@ sub run_update_report_and_clear_paid {
 
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
-            warn "ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address" if $debug >= 0;
+            say "ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address" if $debug >= 0;
 
             my $p = {
                 to      => $email_address,
@@ -689,12 +690,10 @@ sub run_update_report_and_clear_paid {
         logaction( 'GENTLENUDGE', uc($type), undef,
             $json->encode($info), 'cron' );
 
-        $dbh->commit();
     } catch {
         $info->{error} = $_;
         logaction( 'GENTLENUDGE', uc($type) . "_ERROR", undef,
             $json->encode($info), 'cron' );
-        $dbh->rollback();
         die "error in run_update_report_and_clear_paid: $_";
     };
 }
@@ -702,13 +701,13 @@ sub run_update_report_and_clear_paid {
 sub clear_patron_from_collections {
     my ( $self, $params, $borrowernumber ) = @_;
 
-    warn "CLEARING PATRON $borrowernumber FROM COLLECTIONS" if $debug >= 2;
+    say "CLEARING PATRON $borrowernumber FROM COLLECTIONS" if $debug >= 2;
 
     my $patron = Koha::Patrons->find($borrowernumber);
     next unless $patron;
 
     if ( $params->{flag_type} eq 'borrower_field' ) {
-        $patron->update( { $params->{collections_flag} => 'no' } );
+        $patron->_result->update( { $params->{collections_flag} => 'no' } );
     }
     if ( $params->{flag_type} eq 'attribute_field' ) {
         my $a = Koha::Patron::Attributes->find(
