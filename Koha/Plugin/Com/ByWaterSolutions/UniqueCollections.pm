@@ -251,6 +251,7 @@ sub run_submissions_report {
     MAX(borrowers.surname)            AS "surname",
     MAX(borrowers.firstname)          AS "firstname",
     MAX(borrowers.address)            AS "address",
+    MAX(borrowers.address2)           AS "address2",
     MAX(borrowers.city)               AS "city",
     MAX(borrowers.zipcode)            AS "zipcode",
     MAX(borrowers.state)              AS "state",
@@ -394,14 +395,15 @@ sub run_submissions_report {
         my $columns = [
             "borrowernumber", "surname",
             "firstname",      "cardnumber",
-            "address",        "city",
-            "zipcode",        "state",
-            "phone",          "mobile",
-            "Alt Ph 1",       "Alt Ph 2",
-            "branchcode",     "Adult or Child",
-            "dateofbirth",    "Most recent charge",
-            "Amt_In_Range",   "Total_Due",
-            "Total_Plus_Fee", "email"
+            "address",        "address2",
+            "city",           "zipcode", 
+            "state",          "phone",
+            "mobile",         "Alt Ph 1",
+            "Alt Ph 2",       "branchcode", 
+            "Adult or Child", "dateofbirth",   
+            "Most recent charge","Amt_In_Range",   
+            "Total_Due",      "Total_Plus_Fee", 
+            "email"
         ];
 
         ## Email the results
