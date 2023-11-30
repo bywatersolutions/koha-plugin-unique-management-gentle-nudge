@@ -230,7 +230,6 @@ sub run_submissions_report {
     my $age_limitation = $params->{age_limitation};
 
     my $dbh = C4::Context->dbh;
-    $dbh->{AutoCommit} = 0;    # enable transactions
     $dbh->{RaiseError} = 1;    # die if a query has problems
 
     my $info = {};
@@ -511,7 +510,6 @@ sub run_submissions_report {
             'GENTLENUDGE',        'NEW_SUBMISSIONS_ERROR', undef,
             $json->encode($info), 'cron'
         );
-        $dbh->rollback();
         die "error in run_update_report_and_clear_paid: $_";
     };
 }
