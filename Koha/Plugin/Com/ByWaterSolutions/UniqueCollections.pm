@@ -505,12 +505,17 @@ sub run_submissions_report {
             $json->encode($info), 'cron'
         );
     } catch {
-        $info->{error} = $_;
+        if ( $_->isa('Exception::Class') ) {
+            $info->{error} = $_->error . "\n" . $_->trace->as_string;
+        } else {
+            $info->{error} = $_;
+        }
+
         logaction(
             'GENTLENUDGE',        'NEW_SUBMISSIONS_ERROR', undef,
             $json->encode($info), 'cron'
         );
-        die "error in run_update_report_and_clear_paid: $_";
+        die "error in run_update_report_and_clear_paid: " . $info->{error};
     };
 }
 
@@ -689,7 +694,12 @@ sub run_update_report_and_clear_paid {
         );
 
     } catch {
-        $info->{error} = $_;
+        if ( $_->isa('Exception::Class') ) {
+            $info->{error} = $_->error . "\n" . $_->trace->as_string;
+        } else {
+            $info->{error} = $_;
+        }
+
         logaction(
             'GENTLENUDGE',        uc($type) . "_ERROR", undef,
             $json->encode($info), 'cron'
