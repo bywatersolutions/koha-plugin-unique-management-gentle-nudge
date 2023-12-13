@@ -506,7 +506,7 @@ sub run_submissions_report {
             $json->encode($info), 'cron'
         );
     } catch {
-        if ( $_->isa('Exception::Class') ) {
+        if ( $_->isa('Koha::Exception') ) {
             $info->{error} = $_->error . "\n" . $_->trace->as_string;
         } else {
             $info->{error} = $_;
@@ -695,7 +695,7 @@ sub run_update_report_and_clear_paid {
         );
 
     } catch {
-        if ( $_->isa('Exception::Class') ) {
+        if ( $_->isa('Koha::Exception') ) {
             $info->{error} = $_->error . "\n" . $_->trace->as_string;
         } else {
             $info->{error} = $_;
