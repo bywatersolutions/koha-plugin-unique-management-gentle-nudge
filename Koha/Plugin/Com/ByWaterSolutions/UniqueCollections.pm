@@ -379,6 +379,7 @@ sub run_submissions_report {
                 }
             }
 
+            my $processing_fee = $params->{processing_fee};
             $patron->account->add_debit(
                 {
                     amount      => $params->{processing_fee},
@@ -386,7 +387,7 @@ sub run_submissions_report {
                     interface   => 'cron',
                     type        => 'MANUAL',
                 }
-            ) if $params->{processing_fee};
+            ) if $processing_fee && $processing_fee > 0;
 
             push( @ums_new_submissions, $r );
         }
