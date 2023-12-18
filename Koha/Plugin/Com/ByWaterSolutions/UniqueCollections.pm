@@ -18,6 +18,7 @@ use Koha::Patrons;
 use File::Path qw( make_path );
 use File::Slurp;
 use JSON;
+use Net::SFTP::Foreign;
 use Text::CSV::Slurp;
 use Try::Tiny;
 
