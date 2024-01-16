@@ -586,6 +586,7 @@ sub run_update_report_and_clear_paid {
                             comment        => { 'like' => "Patron sent to collections on %" }
                         }
                     )->delete();
+                    Koha::Patron::Debarments::UpdateBorrowerDebarmentFlags( $r->{borrowernumber} );
                 }
             }
         }
