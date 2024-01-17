@@ -440,7 +440,7 @@ sub run_submissions_report {
             $info->{sftp_host}     = $sftp_host;
             $info->{sftp_username} = $sftp_username;
 
-            my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'cust2unique';
+            my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'incoming';
 
             my $sftp = Net::SFTP::Foreign->new(
                 host     => $sftp_host,
