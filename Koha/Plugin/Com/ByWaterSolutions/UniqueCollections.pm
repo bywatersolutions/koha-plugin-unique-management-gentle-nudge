@@ -333,7 +333,7 @@ sub run_submissions_report {
                     ORDER BY borrowers.surname ASC
             };
 
-        say "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug >= 0;
+        say "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug > 0;
 
 ### Update new submissions patrons, add fee, mark as being in collections
         $sth = $dbh->prepare($ums_submission_query);
@@ -463,7 +463,7 @@ sub run_submissions_report {
 
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
-            say "ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address" if $debug >= 0;
+            say "ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address" if $debug > 0;
 
             $info->{email_to}   = $email_address;
             $info->{email_from} = $email_from;
@@ -566,7 +566,7 @@ sub run_update_report_and_clear_paid {
         };
 
         say "UMS UPDATE QUERY:\n$ums_update_query"
-            if ( !$params->{send_sync_report} ) && $debug >= 0;
+            if ( !$params->{send_sync_report} ) && $debug > 0;
 
         $sth = $dbh->prepare($ums_update_query);
         $sth->execute();
@@ -652,7 +652,7 @@ sub run_update_report_and_clear_paid {
 
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
-            say "ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address" if $debug >= 0;
+            say "ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address" if $debug > 0;
 
             my $p = {
                 to      => $email_address,
