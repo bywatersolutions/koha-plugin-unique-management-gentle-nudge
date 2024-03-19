@@ -207,6 +207,7 @@
               <div class="form-group">
                 <label for="upload_path">Upload path</label>
                 <input type="text" name="upload_path" class="form-control" value="[% upload_path %]">
+                <span class="hint">Leave blank to use the default upload path.</span>
               </div>
           </fieldset>
 
