@@ -203,6 +203,11 @@
                 <label for="password">Password</label>
                 <input type="password" name="password" class="form-control" value="[% password %]">
               </div>
+
+              <div class="form-group">
+                <label for="upload_path">Upload path</label>
+                <input type="text" name="upload_path" class="form-control" value="[% upload_path %]">
+              </div>
           </fieldset>
 
           <div class="form-group">

@@ -98,6 +98,7 @@ sub configure {
             host                            => $self->retrieve_data('host'),
             username                        => $self->retrieve_data('username'),
             password                        => $self->retrieve_data('password'),
+            upload_path                     => $self->retrieve_data('upload_path'),
             attributes                      => scalar Koha::Patron::Attribute::Types->search(),
             auto_clear_paid_threshold       => $self->retrieve_data('auto_clear_paid_threshold'),
             fees_created_before_date_filter => $self->retrieve_data('fees_created_before_date_filter'),
@@ -124,6 +125,7 @@ sub configure {
                 host                            => $cgi->param('host'),
                 username                        => $cgi->param('username'),
                 password                        => $cgi->param('password'),
+                upload_path                     => $cgi->param('upload_path'),
                 auto_clear_paid_threshold       => $cgi->param('auto_clear_paid_threshold'),
                 fees_created_before_date_filter => $cgi->param('fees_created_before_date_filter'),
             }
@@ -422,9 +424,10 @@ sub run_submissions_report {
         write_file( $file_path, $csv );
         say "ARCHIVE WRITTEN TO $file_path" if $debug;
 
-        my $sftp_host     = $self->retrieve_data('host');
-        my $sftp_username = $self->retrieve_data('username');
-        my $sftp_password = $self->retrieve_data('password');
+        my $sftp_host        = $self->retrieve_data('host');
+        my $sftp_username    = $self->retrieve_data('username');
+        my $sftp_password    = $self->retrieve_data('password');
+        my $sftp_upload_path = $self->retrieve_data('upload_path');
 
         my $email_to   = $self->retrieve_data('unique_email');
         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
@@ -440,7 +443,7 @@ sub run_submissions_report {
             $info->{sftp_host}     = $sftp_host;
             $info->{sftp_username} = $sftp_username;
 
-            my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'incoming';
+            my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || $sftp_upload_path || 'incoming';
 
             my $sftp = Net::SFTP::Foreign->new(
                 host     => $sftp_host,
