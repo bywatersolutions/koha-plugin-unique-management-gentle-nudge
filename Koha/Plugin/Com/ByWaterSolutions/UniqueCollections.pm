@@ -804,7 +804,7 @@ sub upgrade {
 
     if ( $self->_version_compare( $database_version, "2.20.0" ) == -1 ) {
 
-        my $words_list_table = $self->get_qualified_table_name('words_list');
+        my $configuration = $self->get_qualified_table_name('words_list');
 
         C4::Context->dbh->do("
         CREATE TABLE IF NOT EXISTS $configuration (
