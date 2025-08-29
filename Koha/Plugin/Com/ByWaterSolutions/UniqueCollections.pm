@@ -44,6 +44,44 @@ our $json = JSON->new;
 $json->pretty(1);
 $json->convert_blessed(1);
 
+=head2 Internal methods
+
+=head3 _table_exists (helper)
+
+Method to check if a table exists in Koha.
+
+FIXME: Should be made available to plugins in core
+
+=cut
+
+sub _table_exists {
+    my ( $self, $table ) = @_;
+    eval {
+        C4::Context->dbh->{PrintError} = 0;
+        C4::Context->dbh->{RaiseError} = 1;
+        C4::Context->dbh->do(qq{SELECT * FROM $table WHERE 1 = 0 });
+    };
+    return 1 unless $@;
+    return 0;
+}
+
+=head3 _column_exists (helper)
+
+Method to check if a column exists in a table in Koha.
+
+=cut
+
+sub _column_exists {
+    my ( $self, $table, $column ) = @_;
+    eval {
+        C4::Context->dbh->{PrintError} = 0;
+        C4::Context->dbh->{RaiseError} = 1;
+        C4::Context->dbh->do(qq{SELECT $column FROM $table WHERE 1 = 0 });
+    };
+    return 1 unless $@;
+    return 0;
+}
+
 =head3 new
 
 =cut
