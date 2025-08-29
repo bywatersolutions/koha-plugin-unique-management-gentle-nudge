@@ -801,7 +801,7 @@ sub install() {
         $dbh->do("
             CREATE TABLE IF NOT EXISTS $configuration (
                     `library_group` VARCHAR(15) NULL DEFAULT NULL COMMENT 'library group id from the library groups table',
-                    `day_of_week` INT(1) NOT_NULL DEFAULT 0 COMMENT 'Day of the week to run on. 0=Sunday 1=Monday, etc',
+                    `day_of_week` INT(1) NOT_NULL DEFAULT 0 COMMENT 'Day of the week to run on 0 Sunday 1 Monday etc',
                     `patron_categories` VARCHAR(191) NULL DEFAULT NULL COMMENT 'Comma delimited list of patron category codes that are eligible for collections. e.g. CAT1,CAT2,CAT3. Leave blank for all categories.',
                     `threshold` INT(11) NOT NULL DEFAULT '25.00' COMMENT 'Minimum amount owed to be sent to collections.',
                     `processing_fee` INT(11) NULL DEFAULT '10.00' COMMENT 'Amount of the processing fee added to the patron account',
