@@ -22,6 +22,9 @@ use Net::SFTP::Foreign;
 use Text::CSV::Slurp;
 use Try::Tiny;
 
+use Log::Log4perl qw(:easy);
+Log::Log4perl->easy_init($DEBUG);
+
 ## Here we set our plugin version
 our $VERSION         = "{VERSION}";
 our $MINIMUM_VERSION = "{MINIMUM_VERSION}";
@@ -218,7 +221,7 @@ sub cronjob_nightly {
     my $run_weeklys;
     my $run_on_dow = $self->retrieve_data('run_on_dow');
     unless ( (localtime)[6] == $run_on_dow ) {
-        say "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6]
+        DEBUG "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6]
             if $debug >= 1;
     } else {
         $run_weeklys = 1;
@@ -259,7 +262,7 @@ sub cronjob_nightly {
     if ( $run_weeklys && !$params->{send_sync_report} ) {
         $self->run_submissions_report($params);
     } elsif ( !$params->{send_sync_report} ) {
-        say "NOT THE DOW TO RUN SUBMISSIONS\n\n" if $debug >= 1;
+        DEBUG "NOT THE DOW TO RUN SUBMISSIONS\n\n" if $debug >= 1;
     }
 
     ### Process UMS Update Report
@@ -373,14 +376,14 @@ sub run_submissions_report {
                     ORDER BY borrowers.surname ASC
             };
 
-        say "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug > 0;
+        DEBUG "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug > 0;
 
 ### Update new submissions patrons, add fee, mark as being in collections
         $sth = $dbh->prepare($ums_submission_query);
         $sth->execute();
         my @ums_new_submissions;
         while ( my $r = $sth->fetchrow_hashref ) {
-            say "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
+            DEBUG "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
 
             my $patron = Koha::Patrons->find( $r->{borrowernumber} );
             next unless $patron;
@@ -452,7 +455,7 @@ sub run_submissions_report {
             @ums_new_submissions
             ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
             : 'No qualifying records';
-        say "CSV:\n" . $csv if $debug >= 2;
+        DEBUG "CSV:\n" . $csv if $debug >= 2;
 
         $archive_dir ||= "/tmp";
 
@@ -460,7 +463,7 @@ sub run_submissions_report {
         my $file_path = "$archive_dir/$filename";
 
         write_file( $file_path, $csv );
-        say "ARCHIVE WRITTEN TO $file_path" if $debug;
+        DEBUG "ARCHIVE WRITTEN TO $file_path" if $debug;
 
         my $sftp_host        = $self->retrieve_data('host');
         my $sftp_username    = $self->retrieve_data('username');
@@ -504,7 +507,7 @@ sub run_submissions_report {
 
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
-            say "ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address" if $debug > 0;
+            DEBUG "ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address" if $debug > 0;
 
             $info->{email_to}   = $email_address;
             $info->{email_from} = $email_from;
@@ -594,11 +597,11 @@ sub run_update_report_and_clear_paid {
         };
 
         $ums_update_query .= qq{
-            AND attribute = '1'
+            AND ( attribute = '1' OR attrigute = 'yes' )
         } if $params->{flag_type} eq 'attribute_field';
 
         $ums_update_query .= qq{
-            AND borrowers.$params->{collections_flag} = 'yes'
+            AND ( borrowers.$params->{collections_flag} = 'yes' OR  borrowers.$params->{collections_flag} = '1' )
         } if $params->{flag_type} eq 'borrower_field';
 
         $ums_update_query .= q{
@@ -606,14 +609,14 @@ sub run_update_report_and_clear_paid {
                 ORDER BY borrowers.surname ASC
         };
 
-        say "UMS UPDATE QUERY:\n$ums_update_query"
+        DEBUG "UMS UPDATE QUERY:\n$ums_update_query"
             if ( !$params->{send_sync_report} ) && $debug > 0;
 
         $sth = $dbh->prepare($ums_update_query);
         $sth->execute();
         my @ums_updates;
         while ( my $r = $sth->fetchrow_hashref ) {
-            say "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
+            DEBUG "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
             push( @ums_updates, $r );
 
             my $due = $r->{Due} || 0;
@@ -651,11 +654,11 @@ sub run_update_report_and_clear_paid {
             @ums_updates
             ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $columns )
             : 'No qualifying records';
-        say "CSV:\n" . $csv if $debug >= 2;
+        DEBUG "CSV:\n" . $csv if $debug >= 2;
 
         write_file( $file_path, $csv )
             if $archive_dir;
-        say "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
+        DEBUG "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
             if $archive_dir && $debug;
 
         my $sftp_host     = $self->retrieve_data('host');
@@ -693,7 +696,7 @@ sub run_update_report_and_clear_paid {
 
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
-            say "ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address" if $debug > 0;
+            DEBUG "ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address" if $debug > 0;
 
             my $p = {
                 to      => $email_address,
@@ -755,7 +758,7 @@ sub run_update_report_and_clear_paid {
 sub clear_patron_from_collections {
     my ( $self, $params, $borrowernumber ) = @_;
 
-    say "CLEARING PATRON $borrowernumber FROM COLLECTIONS" if $debug >= 2;
+    DEBUG "CLEARING PATRON $borrowernumber FROM COLLECTIONS" if $debug >= 2;
 
     my $patron = Koha::Patrons->find($borrowernumber);
     next unless $patron;
