@@ -22,6 +22,10 @@ use Net::SFTP::Foreign;
 use Text::CSV::Slurp;
 use Try::Tiny;
 
+use constant LOG_INFO => 1;
+use constant LOG_DEBUG => 2;
+use constant LOG_TRACE => 3;
+
 ## Here we set our plugin version
 our $VERSION         = "{VERSION}";
 our $MINIMUM_VERSION = "{MINIMUM_VERSION}";
@@ -221,7 +225,7 @@ sub cronjob_nightly {
     my $run_on_dow = $self->retrieve_data('run_on_dow');
     unless ( (localtime)[6] == $run_on_dow ) {
         log_info "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6]
-            if $debug >= 1;
+            ;
     } else {
         $run_weeklys = 1;
     }
@@ -261,7 +265,7 @@ sub cronjob_nightly {
     if ( $run_weeklys && !$params->{send_sync_report} ) {
         $self->run_submissions_report($params);
     } elsif ( !$params->{send_sync_report} ) {
-        log_info "NOT THE DOW TO RUN SUBMISSIONS\n\n" if $debug >= 1;
+        log_info "NOT THE DOW TO RUN SUBMISSIONS\n\n" ;
     }
 
     ### Process UMS Update Report
@@ -382,7 +386,7 @@ sub run_submissions_report {
         $sth->execute();
         my @ums_new_submissions;
         while ( my $r = $sth->fetchrow_hashref ) {
-            log_debug "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 1;
+            log_debug "QUERY RESULT: " . Data::Dumper::Dumper($r) ;
 
             my $patron = Koha::Patrons->find( $r->{borrowernumber} );
             next unless $patron;
@@ -454,7 +458,7 @@ sub run_submissions_report {
             @ums_new_submissions
             ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
             : 'No qualifying records';
-        log_trace "CSV:\n" . $csv if $debug >= 2;
+        log_trace "CSV:\n" . $csv ;
 
         $archive_dir ||= "/tmp";
 
@@ -615,7 +619,7 @@ sub run_update_report_and_clear_paid {
         $sth->execute();
         my @ums_updates;
         while ( my $r = $sth->fetchrow_hashref ) {
-            log_debug "QUERY RESULT: " . Data::Dumper::Dumper($r) if $debug >= 2;
+            log_debug "QUERY RESULT: " . Data::Dumper::Dumper($r) ;
             push( @ums_updates, $r );
 
             my $due = $r->{Due} || 0;
@@ -653,7 +657,7 @@ sub run_update_report_and_clear_paid {
             @ums_updates
             ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $columns )
             : 'No qualifying records';
-        log_trace "CSV:\n" . $csv if $debug >= 3;
+        log_trace "CSV:\n" . $csv ;
 
         write_file( $file_path, $csv )
             if $archive_dir;
@@ -757,7 +761,7 @@ sub run_update_report_and_clear_paid {
 sub clear_patron_from_collections {
     my ( $self, $params, $borrowernumber ) = @_;
 
-    log_info "CLEARING PATRON $borrowernumber FROM COLLECTIONS" if $debug >= 1;
+    log_info "CLEARING PATRON $borrowernumber FROM COLLECTIONS" ;
 
     my $patron = Koha::Patrons->find($borrowernumber);
     next unless $patron;
@@ -923,9 +927,8 @@ sub _log {
     prune_old_logs();
 }
 
-sub log_info  { _log("INFO",  shift) }
-sub log_debug { _log("DEBUG", shift) }
-sub log_trace { _log("TRACE", shift) }
-sub log_error { _log("ERROR", shift) }
+sub log_info  { _log("INFO",  shift) if $debug >= 1; }
+sub log_debug { _log("DEBUG", shift) if $debug >= 2;}
+sub log_trace { _log("TRACE", shift) if $debug >= 3;}
 
 1;
