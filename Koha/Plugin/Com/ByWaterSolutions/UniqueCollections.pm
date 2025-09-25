@@ -601,7 +601,7 @@ sub run_update_report_and_clear_paid {
         };
 
         $ums_update_query .= qq{
-            AND ( attribute = '1' OR attrigute = 'yes' )
+            AND ( attribute = '1' OR attribute = 'yes' )
         } if $params->{flag_type} eq 'attribute_field';
 
         $ums_update_query .= qq{
