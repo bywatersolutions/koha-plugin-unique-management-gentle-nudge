@@ -73,6 +73,7 @@ sub _table_exists {
 
 Method to check if a column exists in a table in Koha.
 
+
 =cut
 
 sub _column_exists {
@@ -224,7 +225,7 @@ sub cronjob_nightly {
     my $run_weeklys;
     my $run_on_dow = $self->retrieve_data('run_on_dow');
     unless ( (localtime)[6] == $run_on_dow ) {
-        log_info "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6];
+        log_info( "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6] );
     } else {
         $run_weeklys = 1;
     }
@@ -264,7 +265,7 @@ sub cronjob_nightly {
     if ( $run_weeklys && !$params->{send_sync_report} ) {
         $self->run_submissions_report($params);
     } elsif ( !$params->{send_sync_report} ) {
-        log_info "NOT THE DOW TO RUN SUBMISSIONS\n\n";
+        log_info("NOT THE DOW TO RUN SUBMISSIONS");
     }
 
     ### Process UMS Update Report
@@ -378,14 +379,14 @@ sub run_submissions_report {
                     ORDER BY borrowers.surname ASC
             };
 
-        log_debug "UMS SUBMISSION QUERY:\n$ums_submission_query" if $debug > 0;
+        log_debug("UMS SUBMISSION QUERY:\n$ums_submission_query");
 
 ### Update new submissions patrons, add fee, mark as being in collections
         $sth = $dbh->prepare($ums_submission_query);
         $sth->execute();
         my @ums_new_submissions;
         while ( my $r = $sth->fetchrow_hashref ) {
-            log_debug "QUERY RESULT: " . Data::Dumper::Dumper($r);
+            log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
 
             my $patron = Koha::Patrons->find( $r->{borrowernumber} );
             next unless $patron;
@@ -457,7 +458,7 @@ sub run_submissions_report {
             @ums_new_submissions
             ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
             : 'No qualifying records';
-        log_trace "CSV:\n" . $csv;
+        log_trace( "CSV:\n" . $csv );
 
         $archive_dir ||= "/tmp";
 
@@ -465,7 +466,7 @@ sub run_submissions_report {
         my $file_path = "$archive_dir/$filename";
 
         write_file( $file_path, $csv );
-        log_info "ARCHIVE WRITTEN TO $file_path" if $debug;
+        log_info("ARCHIVE WRITTEN TO $file_path");
 
         my $sftp_host        = $self->retrieve_data('host');
         my $sftp_username    = $self->retrieve_data('username');
@@ -509,7 +510,7 @@ sub run_submissions_report {
 
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
-            log_info "ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address" if $debug > 0;
+            log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
 
             $info->{email_to}   = $email_address;
             $info->{email_from} = $email_from;
@@ -611,14 +612,14 @@ sub run_update_report_and_clear_paid {
                 ORDER BY borrowers.surname ASC
         };
 
-        log_debug "UMS UPDATE QUERY:\n$ums_update_query"
-            if ( !$params->{send_sync_report} ) && $debug > 0;
+        log_debug("UMS UPDATE QUERY:\n$ums_update_query")
+            if ( !$params->{send_sync_report} );
 
         $sth = $dbh->prepare($ums_update_query);
         $sth->execute();
         my @ums_updates;
         while ( my $r = $sth->fetchrow_hashref ) {
-            log_debug "QUERY RESULT: " . Data::Dumper::Dumper($r);
+            log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
             push( @ums_updates, $r );
 
             my $due = $r->{Due} || 0;
@@ -656,12 +657,12 @@ sub run_update_report_and_clear_paid {
             @ums_updates
             ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $columns )
             : 'No qualifying records';
-        log_trace "CSV:\n" . $csv;
+        log_trace( "CSV:\n" . $csv );
 
         write_file( $file_path, $csv )
             if $archive_dir;
-        log_info "ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv"
-            if $archive_dir && $debug;
+        log_info("ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv")
+            if $archive_dir;
 
         my $sftp_host     = $self->retrieve_data('host');
         my $sftp_username = $self->retrieve_data('username');
@@ -698,7 +699,7 @@ sub run_update_report_and_clear_paid {
 
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
-            log_info "ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address" if $debug > 0;
+            log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
 
             my $p = {
                 to      => $email_address,
@@ -760,7 +761,7 @@ sub run_update_report_and_clear_paid {
 sub clear_patron_from_collections {
     my ( $self, $params, $borrowernumber ) = @_;
 
-    log_info "CLEARING PATRON $borrowernumber FROM COLLECTIONS";
+    log_info("CLEARING PATRON $borrowernumber FROM COLLECTIONS");
 
     my $patron = Koha::Patrons->find($borrowernumber);
     next unless $patron;
@@ -894,7 +895,7 @@ sub uninstall() {
 
 sub _log_file {
     my $home   = $ENV{HOME} || ( getpwuid($<) )[7];
-    my $logdir = File::Spec->catdir( $home, '.gentle_nudge_logs' );
+    my $logdir = File::Spec->catdir( $home, 'gentle_nudge_logs' );
     mkdir $logdir unless -d $logdir;
 
     my $date = strftime( "%Y-%m-%d", localtime );
@@ -902,6 +903,10 @@ sub _log_file {
 }
 
 sub prune_old_logs {
+    my $home   = $ENV{HOME} || ( getpwuid($<) )[7];
+    my $logdir = File::Spec->catdir( $home, 'gentle_nudge_logs' );
+    mkdir $logdir unless -d $logdir;
+
     my $cutoff = time - ( 30 * 24 * 60 * 60 );    # 30 days in seconds
     opendir my $dh, $logdir or return;
     while ( my $file = readdir $dh ) {
