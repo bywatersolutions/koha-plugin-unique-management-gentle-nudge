@@ -9,7 +9,7 @@ use base qw(Koha::Plugins::Base);
 ## We will also need to include any Koha libraries we want to access
 use C4::Auth;
 use C4::Context;
-use C4::Log qw(logaction);
+use C4::Log         qw(logaction);
 use Koha::DateUtils qw(dt_from_string);
 use Koha::Patron::Attribute::Types;
 use Koha::Patron::Debarments qw(AddDebarment);
@@ -22,7 +22,7 @@ use Net::SFTP::Foreign;
 use Text::CSV::Slurp;
 use Try::Tiny;
 
-use constant LOG_INFO => 1;
+use constant LOG_INFO  => 1;
 use constant LOG_DEBUG => 2;
 use constant LOG_TRACE => 3;
 
@@ -224,8 +224,7 @@ sub cronjob_nightly {
     my $run_weeklys;
     my $run_on_dow = $self->retrieve_data('run_on_dow');
     unless ( (localtime)[6] == $run_on_dow ) {
-        log_info "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6]
-            ;
+        log_info "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6];
     } else {
         $run_weeklys = 1;
     }
@@ -265,7 +264,7 @@ sub cronjob_nightly {
     if ( $run_weeklys && !$params->{send_sync_report} ) {
         $self->run_submissions_report($params);
     } elsif ( !$params->{send_sync_report} ) {
-        log_info "NOT THE DOW TO RUN SUBMISSIONS\n\n" ;
+        log_info "NOT THE DOW TO RUN SUBMISSIONS\n\n";
     }
 
     ### Process UMS Update Report
@@ -386,7 +385,7 @@ sub run_submissions_report {
         $sth->execute();
         my @ums_new_submissions;
         while ( my $r = $sth->fetchrow_hashref ) {
-            log_debug "QUERY RESULT: " . Data::Dumper::Dumper($r) ;
+            log_debug "QUERY RESULT: " . Data::Dumper::Dumper($r);
 
             my $patron = Koha::Patrons->find( $r->{borrowernumber} );
             next unless $patron;
@@ -440,16 +439,16 @@ sub run_submissions_report {
         }
 
         my $columns = [
-            "borrowernumber", "surname",
-            "firstname",      "cardnumber",
-            "address",        "address2",
-            "city",           "zipcode", 
-            "state",          "phone",
-            "mobile",         "Alt Ph 1",
-            "Alt Ph 2",       "branchcode", 
-            "Adult or Child", "dateofbirth",   
-            "Most recent charge","Amt_In_Range",   
-            "Total_Due",      "Total_Plus_Fee", 
+            "borrowernumber",     "surname",
+            "firstname",          "cardnumber",
+            "address",            "address2",
+            "city",               "zipcode",
+            "state",              "phone",
+            "mobile",             "Alt Ph 1",
+            "Alt Ph 2",           "branchcode",
+            "Adult or Child",     "dateofbirth",
+            "Most recent charge", "Amt_In_Range",
+            "Total_Due",          "Total_Plus_Fee",
             "email"
         ];
 
@@ -458,7 +457,7 @@ sub run_submissions_report {
             @ums_new_submissions
             ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
             : 'No qualifying records';
-        log_trace "CSV:\n" . $csv ;
+        log_trace "CSV:\n" . $csv;
 
         $archive_dir ||= "/tmp";
 
@@ -619,7 +618,7 @@ sub run_update_report_and_clear_paid {
         $sth->execute();
         my @ums_updates;
         while ( my $r = $sth->fetchrow_hashref ) {
-            log_debug "QUERY RESULT: " . Data::Dumper::Dumper($r) ;
+            log_debug "QUERY RESULT: " . Data::Dumper::Dumper($r);
             push( @ums_updates, $r );
 
             my $due = $r->{Due} || 0;
@@ -657,7 +656,7 @@ sub run_update_report_and_clear_paid {
             @ums_updates
             ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $columns )
             : 'No qualifying records';
-        log_trace "CSV:\n" . $csv ;
+        log_trace "CSV:\n" . $csv;
 
         write_file( $file_path, $csv )
             if $archive_dir;
@@ -761,7 +760,7 @@ sub run_update_report_and_clear_paid {
 sub clear_patron_from_collections {
     my ( $self, $params, $borrowernumber ) = @_;
 
-    log_info "CLEARING PATRON $borrowernumber FROM COLLECTIONS" ;
+    log_info "CLEARING PATRON $borrowernumber FROM COLLECTIONS";
 
     my $patron = Koha::Patrons->find($borrowernumber);
     next unless $patron;
@@ -803,8 +802,8 @@ sub install() {
 
     my $configuration = $self->get_qualified_table_name('configuration');
 
-    unless ($self->_table_exists('configuration') ) {
-        $dbh->do("
+    unless ( $self->_table_exists('configuration') ) {
+        $dbh->do( "
             CREATE TABLE IF NOT EXISTS $configuration (
                     `library_group` VARCHAR(15) NULL DEFAULT NULL COMMENT 'library group id from the library groups table',
                     `day_of_week` INT(1) NOT_NULL DEFAULT 0,
@@ -829,8 +828,7 @@ sub install() {
                     ) ENGINE=INNODB;"
         );
     }
-            $self->store_data(
-    );
+    $self->store_data();
 
     return 1;
 }
@@ -844,13 +842,13 @@ plugin is installed over an existing older version of a plugin
 
 sub upgrade {
     my ( $self, $args ) = @_;
-   my $database_version = $self->retrieve_data('__INSTALLED_VERSION__') || 0;
+    my $database_version = $self->retrieve_data('__INSTALLED_VERSION__') || 0;
 
     if ( $self->_version_compare( $database_version, "2.20.0" ) == -1 ) {
 
         my $configuration = $self->get_qualified_table_name('words_list');
 
-        C4::Context->dbh->do("
+        C4::Context->dbh->do( "
         CREATE TABLE IF NOT EXISTS $configuration (
                     `library_group` VARCHAR(15) NULL DEFAULT NULL COMMENT 'library group id from the library groups table',
                     `day_of_week` INT(1) NOT_NULL DEFAULT '0' COMMENT 'Day of the week to run on. 0=Sunday 1=Monday, etc',
@@ -874,10 +872,10 @@ sub upgrade {
                     FOREIGN KEY (`library_group') REFERENCES `library_groups` (`id`)
                     ) ENGINE=INNODB;
        " );
-    return 1;
-}
-$database_version = "3.00.0";
-        $self->store_data({ '__INSTALLED_VERSION__' => $database_version });
+        return 1;
+    }
+    $database_version = "3.00.0";
+    $self->store_data( { '__INSTALLED_VERSION__' => $database_version } );
 }
 
 =head3 uninstall
@@ -895,40 +893,40 @@ sub uninstall() {
 }
 
 sub _log_file {
-    my $home   = $ENV{HOME} || (getpwuid($<))[7];
-    my $logdir = File::Spec->catdir($home, '.gentle_nudge_logs');
+    my $home   = $ENV{HOME} || ( getpwuid($<) )[7];
+    my $logdir = File::Spec->catdir( $home, '.gentle_nudge_logs' );
     mkdir $logdir unless -d $logdir;
 
-    my $date = strftime("%Y-%m-%d", localtime);
-    return File::Spec->catfile($logdir, "gentle_nudge.$date.log");
+    my $date = strftime( "%Y-%m-%d", localtime );
+    return File::Spec->catfile( $logdir, "gentle_nudge.$date.log" );
 }
 
 sub prune_old_logs {
-    my $cutoff = time - (30 * 24 * 60 * 60);    # 30 days in seconds
+    my $cutoff = time - ( 30 * 24 * 60 * 60 );    # 30 days in seconds
     opendir my $dh, $logdir or return;
-    while (my $file = readdir $dh) {
+    while ( my $file = readdir $dh ) {
         next unless $file =~ /^gentle_nudge\.(\d{4}-\d{2}-\d{2})\.log$/;
-        my $path = File::Spec->catfile($logdir, $file);
-        my $mtime = (stat($path))[9];
+        my $path  = File::Spec->catfile( $logdir, $file );
+        my $mtime = ( stat($path) )[9];
         unlink $path if $mtime && $mtime < $cutoff;
     }
     closedir $dh;
 }
 
 sub _log {
-    my ($level, $msg) = @_;
-    my $ts = strftime("%Y-%m-%d %H:%M:%S", localtime);
+    my ( $level, $msg ) = @_;
+    my $ts   = strftime( "%Y-%m-%d %H:%M:%S", localtime );
     my $line = "[$ts] [$level] $msg\n";
     my $file = _log_file();
-    if (open my $fh, ">>", $file) {
+    if ( open my $fh, ">>", $file ) {
         print $fh $line;
         close $fh;
     }
     prune_old_logs();
 }
 
-sub log_info  { _log("INFO",  shift) if $debug >= 1; }
-sub log_debug { _log("DEBUG", shift) if $debug >= 2;}
-sub log_trace { _log("TRACE", shift) if $debug >= 3;}
+sub log_info  { _log( "INFO",  shift ) if $debug >= 1; }
+sub log_debug { _log( "DEBUG", shift ) if $debug >= 2; }
+sub log_trace { _log( "TRACE", shift ) if $debug >= 3; }
 
 1;
