@@ -21,14 +21,15 @@ use JSON;
 use Net::SFTP::Foreign;
 use Text::CSV::Slurp;
 use Try::Tiny;
+use POSIX qw( strftime );
 
-use constant LOG_INFO  => 1;
-use constant LOG_DEBUG => 2;
-use constant LOG_TRACE => 3;
+use constant LOG_INFO_LL  => 1;
+use constant LOG_DEBUG_LL => 2;
+use constant LOG_TRACE_LL => 3;
 
 ## Here we set our plugin version
-our $VERSION         = "{VERSION}";
-our $MINIMUM_VERSION = "{MINIMUM_VERSION}";
+our $VERSION         = "2.23.1";
+our $MINIMUM_VERSION = "24.11";
 our $debug           = $ENV{UMS_COLLECTIONS_DEBUG}        // 0;
 our $no_email        = $ENV{UMS_COLLECTIONS_NO_EMAIL}     // 0;
 our $archive_dir     = $ENV{UMS_COLLECTIONS_ARCHIVES_DIR} // undef;
@@ -37,7 +38,7 @@ our $metadata = {
     name            => 'Unique Management Services - Gentle Nudge',
     author          => 'Kyle M Hall',
     date_authored   => '2021-09-27',
-    date_updated    => "1900-01-01",
+    date_updated    => "2025-09-25",
     minimum_version => $MINIMUM_VERSION,
     maximum_version => undef,
     version         => $VERSION,
@@ -801,33 +802,31 @@ sub install() {
 
     my $dbh = C4::Context->dbh;
 
-    my $configuration = $self->get_qualified_table_name('configuration');
-
     unless ( $self->_table_exists('configuration') ) {
-        $dbh->do( "
-            CREATE TABLE IF NOT EXISTS $configuration (
-                    `library_group` VARCHAR(15) NULL DEFAULT NULL COMMENT 'library group id from the library groups table',
-                    `day_of_week` INT(1) NOT_NULL DEFAULT 0,
-                    `patron_categories` VARCHAR(191) NULL DEFAULT NULL COMMENT 'Comma delimited list of patron category codes that are eligible for collections. e.g. CAT1,CAT2,CAT3. Leave blank for all categories.',
-                    `threshold` INT(11) NOT NULL DEFAULT '25.00' COMMENT 'Minimum amount owed to be sent to collections.',
-                    `processing_fee` INT(11) NULL DEFAULT '10.00' COMMENT 'Amount of the processing fee added to the patron account',
-                    `collections_flag` VARCHAR(191) NULL DEFAULT NULL COMMENT 'Specify how the patron is flagged as being in collections. If using a patron attribut, it is recommended that the attribute be mapped to the YES_NO cate    gory.',
-                    `fees_newer` INT(11) NOT NULL DEFAULT '60' COMMENT 'fees newer than this number of days will be totaled to check if a patron should be sent to collections',
-                    `fees_older` INT(11) NOT NULL DEFAULT '90' COMMENT 'fewers older than this number of days will be totaled to check if a patron should be sent to collections',
-                    `ignore_before` DATE, NULL, DEFAULT NULL COMMENT 'fees created before this date will not be part of the total to check if a patron should be sent to collections',
-                    `clear_below` TINYINT(1) NOT NULL DEFAULT '0' COMMENT '0, patrons who have paid their fines to below the threshold will not be removed from collections.',
-                    `clear_threshold` INT(11) NOT NULL DEFAULT '0' COMMENT 'The patron will be cleared from collections if if they do not exceed this threshold.',
-                    `restriction` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Newly flagged patrons will have a restriction added to their account.',
-                    `remove_minors` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'If 1, patrons under the age of 18 years old will not be included on the collections report.',
-                    `unique_email` VARCHAR(191) NULL DEFAULT NULL COMMENT 'If email information is set, plugin will email files to the given addresses.',
-                    `additional_email` VARCHAR(191) NULL DEFAULT NULL COMMENT 'If you would like to send to anotehr email address as well',
-                    `sftp_host` VARCHAR(191) NULL DEFAULT NULL,
-                    `sftp_user` VARCHAR(191) NULL DEFAULT NULL,
-                    `sftp_password` mediumtext NULL DEFAULT NULL,
-                    PRIMARY KEY (`library_group`),
-                    FOREIGN KEY (`library_group') REFERENCES `library_groups` (`id`)
-                    ) ENGINE=INNODB;"
-        );
+        $dbh->do(qq{
+CREATE TABLE IF NOT EXISTS plugin_ums_gentle_nudge (
+    `library_group` INT(11) NOT NULL COMMENT 'library group id from the library groups table',
+    `day_of_week` INT(1) NOT NULL DEFAULT 0,
+    `patron_categories` VARCHAR(191) NULL DEFAULT NULL COMMENT 'Comma delimited list of patron category codes that are eligible for collections. e.g. CAT1,CAT2,CAT3. Leave blank for all categories.',
+    `threshold` INT(11) NOT NULL DEFAULT 25 COMMENT 'Minimum amount owed to be sent to collections.',
+    `processing_fee` INT(11) NULL DEFAULT 10 COMMENT 'Amount of the processing fee added to the patron account',
+    `collections_flag` VARCHAR(191) NULL DEFAULT NULL COMMENT 'Specify how the patron is flagged as being in collections. If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO category.',
+    `fees_newer` INT(11) NOT NULL DEFAULT 60 COMMENT 'Fees newer than this number of days will be totaled to check if a patron should be sent to collections',
+    `fees_older` INT(11) NOT NULL DEFAULT 90 COMMENT 'Fees older than this number of days will be totaled to check if a patron should be sent to collections',
+    `ignore_before` DATE DEFAULT NULL COMMENT 'Fees created before this date will not be part of the total to check if a patron should be sent to collections',
+    `clear_below` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '0, patrons who have paid their fines to below the threshold will not be removed from collections.',
+    `clear_threshold` INT(11) NOT NULL DEFAULT 0 COMMENT 'The patron will be cleared from collections if they do not exceed this threshold.',
+    `restriction` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Newly flagged patrons will have a restriction added to their account.',
+    `remove_minors` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'If 1, patrons under the age of 18 years old will not be included on the collections report.',
+    `unique_email` VARCHAR(191) NULL DEFAULT NULL COMMENT 'If email information is set, plugin will email files to the given addresses.',
+    `additional_email` VARCHAR(191) NULL DEFAULT NULL COMMENT 'If you would like to send to another email address as well',
+    `sftp_host` VARCHAR(191) NULL DEFAULT NULL,
+    `sftp_user` VARCHAR(191) NULL DEFAULT NULL,
+    `sftp_password` MEDIUMTEXT NULL DEFAULT NULL,
+    PRIMARY KEY (`library_group`),
+    FOREIGN KEY (`library_group`) REFERENCES `library_groups` (`id`)
+) ENGINE=INNODB;
+        });
     }
     $self->store_data();
 
@@ -847,32 +846,33 @@ sub upgrade {
 
     if ( $self->_version_compare( $database_version, "2.20.0" ) == -1 ) {
 
-        my $configuration = $self->get_qualified_table_name('words_list');
+        my $dbh = C4::Context->dbh;
 
-        C4::Context->dbh->do( "
-        CREATE TABLE IF NOT EXISTS $configuration (
-                    `library_group` VARCHAR(15) NULL DEFAULT NULL COMMENT 'library group id from the library groups table',
-                    `day_of_week` INT(1) NOT_NULL DEFAULT '0' COMMENT 'Day of the week to run on. 0=Sunday 1=Monday, etc',
-                    `patron_categories` VARCHAR(191) NULL DEFAULT NULL COMMENT 'Comma delimited list of patron category codes that are eligible for collections. e.g. CAT1,CAT2,CAT3. Leave blank for all categories.',
-                    `threshold` INT(11) NOT NULL DEFAULT '25.00' COMMENT 'Minimum amount owed to be sent to collections.',
-                    `processing_fee` INT(11) NULL DEFAULT '10.00' COMMENT 'Amount of the processing fee added to the patron account',
-                    `collections_flag` VARCHAR(191) NULL DEFAULT NULL COMMENT 'Specify how the patron is flagged as being in collections. If using a patron attribut, it is recommended that the attribute be mapped to the YES_NO cate    gory.',
-                    `fees_newer` INT(11) NOT NULL DEFAULT '60' COMMENT 'fees newer than this number of days will be totaled to check if a patron should be sent to collections',
-                    `fees_older` INT(11) NOT NULL DEFAULT '90' COMMENT 'fewers older than this number of days will be totaled to check if a patron should be sent to collections',
-                    `ignore_before` DATE, NULL, DEFAULT NULL COMMENT 'fees created before this date will not be part of the total to check if a patron should be sent to collections',
-                    `clear_below` TINYINT(1) NOT NULL DEFAULT '0' COMMENT '0, patrons who have paid their fines to below the threshold will not be removed from collections.',
-                    `clear_threshold` INT(11) NOT NULL DEFAULT '0' COMMENT 'The patron will be cleared from collections if if they do not exceed this threshold.',
-                    `restriction` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Newly flagged patrons will have a restriction added to their account.',
-                    `remove_minors` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'If 1, patrons under the age of 18 years old will not be included on the collections report.',
-                    `unique_email` VARCHAR(191) NULL DEFAULT NULL COMMENT 'If email information is set, plugin will email files to the given addresses.',
-                    `additional_email` VARCHAR(191) NULL DEFAULT NULL COMMENT 'If you would like to send to anotehr email address as well',
-                    `sftp_host` VARCHAR(191) NULL DEFAULT NULL,
-                    `sftp_user` VARCHAR(191) NULL DEFAULT NULL,
-                    `sftp_password` mediumtext NULL DEFAULT NULL,
-                    PRIMARY KEY (`library_group`),
-                    FOREIGN KEY (`library_group') REFERENCES `library_groups` (`id`)
-                    ) ENGINE=INNODB;
-       " );
+        $dbh->do(qq{
+CREATE TABLE IF NOT EXISTS plugin_ums_gentle_nudge (
+    `library_group` INT(11) NOT NULL COMMENT 'library group id from the library groups table',
+    `day_of_week` INT(1) NOT NULL DEFAULT 0,
+    `patron_categories` VARCHAR(191) NULL DEFAULT NULL COMMENT 'Comma delimited list of patron category codes that are eligible for collections. e.g. CAT1,CAT2,CAT3. Leave blank for all categories.',
+    `threshold` INT(11) NOT NULL DEFAULT 25 COMMENT 'Minimum amount owed to be sent to collections.',
+    `processing_fee` INT(11) NULL DEFAULT 10 COMMENT 'Amount of the processing fee added to the patron account',
+    `collections_flag` VARCHAR(191) NULL DEFAULT NULL COMMENT 'Specify how the patron is flagged as being in collections. If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO category.',
+    `fees_newer` INT(11) NOT NULL DEFAULT 60 COMMENT 'Fees newer than this number of days will be totaled to check if a patron should be sent to collections',
+    `fees_older` INT(11) NOT NULL DEFAULT 90 COMMENT 'Fees older than this number of days will be totaled to check if a patron should be sent to collections',
+    `ignore_before` DATE DEFAULT NULL COMMENT 'Fees created before this date will not be part of the total to check if a patron should be sent to collections',
+    `clear_below` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '0, patrons who have paid their fines to below the threshold will not be removed from collections.',
+    `clear_threshold` INT(11) NOT NULL DEFAULT 0 COMMENT 'The patron will be cleared from collections if they do not exceed this threshold.',
+    `restriction` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Newly flagged patrons will have a restriction added to their account.',
+    `remove_minors` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'If 1, patrons under the age of 18 years old will not be included on the collections report.',
+    `unique_email` VARCHAR(191) NULL DEFAULT NULL COMMENT 'If email information is set, plugin will email files to the given addresses.',
+    `additional_email` VARCHAR(191) NULL DEFAULT NULL COMMENT 'If you would like to send to another email address as well',
+    `sftp_host` VARCHAR(191) NULL DEFAULT NULL,
+    `sftp_user` VARCHAR(191) NULL DEFAULT NULL,
+    `sftp_password` MEDIUMTEXT NULL DEFAULT NULL,
+    PRIMARY KEY (`library_group`),
+    FOREIGN KEY (`library_group`) REFERENCES `library_groups` (`id`)
+) ENGINE=INNODB;
+        });
+
         return 1;
     }
     $database_version = "3.00.0";
