@@ -59,6 +59,7 @@ jobs:
         else
           export KOHA_IMAGE=${{ steps.koha-version.outputs.version-major-minor }}
         fi
+        export EXTRA_CPAN="Text::CSV::Slurp"
         ktd --name unique-management-gentle-nudge --plugins up -d
 
     - name: Wait for KTD to be ready
