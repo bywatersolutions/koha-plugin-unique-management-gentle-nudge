@@ -128,6 +128,7 @@ sub configure {
             run_on_dow                      => $self->retrieve_data('run_on_dow'),
             require_lost_fee                => $self->retrieve_data('require_lost_fee'),
             categorycodes                   => $self->retrieve_data('categorycodes'),
+            debit_type_codes                => $self->retrieve_data('debit_type_codes'),
             fees_threshold                  => $self->retrieve_data('fees_threshold'),
             processing_fee                  => $self->retrieve_data('processing_fee') || 0,
             unique_email                    => $self->retrieve_data('unique_email'),
@@ -155,6 +156,7 @@ sub configure {
                 run_on_dow                      => $cgi->param('run_on_dow'),
                 require_lost_fee                => $cgi->param('require_lost_fee'),
                 categorycodes                   => $cgi->param('categorycodes'),
+                debit_type_codes                => $cgi->param('debit_type_codes'),
                 fees_threshold                  => $cgi->param('fees_threshold'),
                 processing_fee                  => $cgi->param('processing_fee') || 0,
                 unique_email                    => $cgi->param('unique_email'),
@@ -258,6 +260,9 @@ sub cronjob_nightly {
 
     my @categorycodes = split( /,/, $self->retrieve_data('categorycodes') );
     $params->{categorycodes} = \@categorycodes;
+
+    my @debit_type_codes = split( /,/, $self->retrieve_data('debit_type_codes') );
+    $params->{debit_type_codes} = \@debit_type_codes;
 
     my $today = dt_from_string();
     $params->{date} = $today->ymd();
@@ -363,6 +368,13 @@ sub run_submissions_report {
             my $codes = join( ',', map { qq{"$_"} } @{ $params->{categorycodes} } );
             $ums_submission_query .= qq{
                     AND borrowers.categorycode IN ( $codes )
+                };
+        }
+
+        if ( @{ $params->{debit_type_codes} } ) {
+            my $codes = join( ',', map { qq{"$_"} } @{ $params->{debit_type_codes} } );
+            $ums_submission_query .= qq{
+                    AND accountlines.debit_type_code IN ( $codes )
                 };
         }
 

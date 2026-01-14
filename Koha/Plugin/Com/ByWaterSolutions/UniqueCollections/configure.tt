@@ -65,6 +65,14 @@
           </div>
 
           <div class="form-group">
+            <label for="debit_type_codes">Debit type codes</label>
+            <input type="text" name="debit_type_codes" class="form-control" value="[% debit_type_codes %]">
+            <span class="help-block">Comma delimited list of debit type codes to use for collections. Leave blank for the default.</span>
+            <span class="help-block">Leave blank to total all debit types</span>
+            <span class="help-block">If debit type codes are entered, all other code types will be ignored for calculating the amount owed for collections.</span>
+          </div>
+
+          <div class="form-group">
             <label for="fees_threshold">Threshold</label>
             <div class="input-group">
               <div class="input-group-addon">$</div>
