@@ -59,7 +59,6 @@ jobs:
         else
           export KOHA_IMAGE=${{ steps.koha-version.outputs.version-major-minor }}
         fi
-        export EXTRA_CPAN="Text::CSV::Slurp"
         ktd --name unique-management-gentle-nudge --plugins up -d
 
     - name: Wait for KTD to be ready
@@ -67,6 +66,12 @@ jobs:
         cd ../koha-testing-docker
         export KTD_HOME=$(pwd)
         ktd --name unique-management-gentle-nudge --wait-ready 120
+
+    - name: Install extra CPAN modules
+      run: |
+        cd ../koha-testing-docker
+        export KTD_HOME=$(pwd)
+        ktd --name unique-management-gentle-nudge --shell --run "cpanm --skip-installed Text::CSV::Slurp"
 
     - name: Run plugin tests
       run: |
