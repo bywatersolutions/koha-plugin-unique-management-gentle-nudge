@@ -65,7 +65,7 @@ jobs:
       run: |
         cd ../koha-testing-docker
         export KTD_HOME=$(pwd)
-        ktd --name unique-management-gentle-nudge --wait-ready 120
+        ktd --name unique-management-gentle-nudge --wait-ready 500
 
     - name: Install extra CPAN modules
       run: |
