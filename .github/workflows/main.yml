@@ -71,7 +71,7 @@ jobs:
       run: |
         cd ../koha-testing-docker
         export KTD_HOME=$(pwd)
-        ktd --name unique-management-gentle-nudge --shell --run "cpanm --skip-installed Text::CSV::Slurp"
+        ktd --name unique-management-gentle-nudge --shell --run "sudo cpanm --skip-installed Text::CSV::Slurp"
 
     - name: Run plugin tests
       run: |
