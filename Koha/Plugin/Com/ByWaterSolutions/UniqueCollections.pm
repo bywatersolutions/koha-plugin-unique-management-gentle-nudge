@@ -596,6 +596,7 @@ sub run_submissions_report {
             }
         }
 
+        my @email_errors;
         foreach my $email_address ( $email_to, @email_cc ) {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
@@ -633,9 +634,12 @@ sub run_submissions_report {
                     $json->encode($info), 'cron'
                 );
 
-                die "Mail not sent: $_";
+                push( @email_errors, "Mail not sent to $email_address: $_" );
             };
         }
+
+        # Every address gets a chance to receive the report before the run fails
+        die join( "\n", @email_errors ) if @email_errors;
 
         logaction(
             'GENTLENUDGE',        'NEW_SUBMISSIONS', undef,
@@ -786,6 +790,7 @@ sub run_update_report_and_clear_paid {
             }
         }
 
+        my @email_errors;
         foreach my $email_address ( $email_to, @email_cc ) {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
@@ -823,9 +828,12 @@ sub run_update_report_and_clear_paid {
                     $json->encode($info), 'cron'
                 );
 
-                die "Mail not sent: $_";
+                push( @email_errors, "Mail not sent to $email_address: $_" );
             };
         }
+
+        # Every address gets a chance to receive the report before the run fails
+        die join( "\n", @email_errors ) if @email_errors;
 
         logaction(
             'GENTLENUDGE',        uc($type), undef,
