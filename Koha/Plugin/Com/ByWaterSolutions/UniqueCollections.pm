@@ -677,9 +677,10 @@ sub run_update_report_and_clear_paid {
         log_info("ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv")
             if $archive_dir;
 
-        my $sftp_host     = $self->retrieve_data('host');
-        my $sftp_username = $self->retrieve_data('username');
-        my $sftp_password = $self->retrieve_data('password');
+        my $sftp_host        = $self->retrieve_data('host');
+        my $sftp_username    = $self->retrieve_data('username');
+        my $sftp_password    = $self->retrieve_data('password');
+        my $sftp_upload_path = $self->retrieve_data('upload_path');
 
         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
         my $email_to   = $self->retrieve_data('unique_email');
@@ -689,7 +690,7 @@ sub run_update_report_and_clear_paid {
             $info->{sftp_host}     = $sftp_host;
             $info->{sftp_username} = $sftp_username;
 
-            my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'incoming';
+            my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || $sftp_upload_path || 'incoming';
 
             my $sftp = Net::SFTP::Foreign->new(
                 host     => $sftp_host,
