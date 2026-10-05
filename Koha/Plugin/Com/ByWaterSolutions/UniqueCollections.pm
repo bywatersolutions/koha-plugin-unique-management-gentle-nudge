@@ -118,6 +118,40 @@ sub _load_runtime_settings {
     $archive_dir = $ENV{UMS_COLLECTIONS_ARCHIVES_DIR} // $self->retrieve_data('archive_dir') || undef;
 }
 
+=head3 _log_configuration_changes
+
+Adds an action log entry for any settings that differ from the stored settings, must be called before the settings are stored
+
+    my $changes = $self->_log_configuration_changes( $settings );
+
+=cut
+
+sub _log_configuration_changes {
+    my ( $self, $settings ) = @_;
+
+    my $changes = {};
+    foreach my $key ( sort keys %$settings ) {
+        my $before = $self->retrieve_data($key) // q{};
+        my $after  = $settings->{$key}          // q{};
+        next if $before eq $after;
+
+        # Show that the SFTP password was set, changed or cleared, but never store the password itself
+        if ( $key eq 'password' ) {
+            $before = '********' if length $before;
+            $after  = '********' if length $after;
+        }
+
+        $changes->{$key} = { before => $before, after => $after };
+    }
+
+    logaction(
+        'GENTLENUDGE',           'CONFIGURATION_UPDATED', undef,
+        $json->encode($changes), 'intranet'
+    ) if %$changes;
+
+    return $changes;
+}
+
 =head3 new
 
 =cut
@@ -184,34 +218,36 @@ sub configure {
 
         $self->output_html( $template->output() );
     } else {
-        $self->store_data(
-            {
-                run_on_dow                      => $cgi->param('run_on_dow'),
-                require_lost_fee                => $cgi->param('require_lost_fee'),
-                categorycodes                   => $cgi->param('categorycodes'),
-                debit_type_codes                => $cgi->param('debit_type_codes'),
-                fees_threshold                  => $cgi->param('fees_threshold'),
-                processing_fee                  => $cgi->param('processing_fee') || 0,
-                unique_email                    => $cgi->param('unique_email'),
-                cc_email                        => $cgi->param('cc_email'),
-                collections_flag                => $cgi->param('collections_flag'),
-                fees_starting_age               => $cgi->param('fees_starting_age'),
-                fees_ending_age                 => $cgi->param('fees_ending_age'),
-                auto_clear_paid                 => $cgi->param('auto_clear_paid'),
-                add_restriction                 => $cgi->param('add_restriction'),
-                remove_restriction              => $cgi->param('remove_restriction'),
-                age_limitation                  => $cgi->param('age_limitation'),
-                host                            => $cgi->param('host'),
-                username                        => $cgi->param('username'),
-                password                        => $cgi->param('password'),
-                upload_path                     => $cgi->param('upload_path'),
-                auto_clear_paid_threshold       => $cgi->param('auto_clear_paid_threshold'),
-                fees_created_before_date_filter => $cgi->param('fees_created_before_date_filter'),
-                debug                           => $cgi->param('debug'),
-                no_email                        => $cgi->param('no_email'),
-                archive_dir                     => $cgi->param('archive_dir'),
-            }
-        );
+        my $settings = {
+            run_on_dow                      => $cgi->param('run_on_dow'),
+            require_lost_fee                => $cgi->param('require_lost_fee'),
+            categorycodes                   => $cgi->param('categorycodes'),
+            debit_type_codes                => $cgi->param('debit_type_codes'),
+            fees_threshold                  => $cgi->param('fees_threshold'),
+            processing_fee                  => $cgi->param('processing_fee') || 0,
+            unique_email                    => $cgi->param('unique_email'),
+            cc_email                        => $cgi->param('cc_email'),
+            collections_flag                => $cgi->param('collections_flag'),
+            fees_starting_age               => $cgi->param('fees_starting_age'),
+            fees_ending_age                 => $cgi->param('fees_ending_age'),
+            auto_clear_paid                 => $cgi->param('auto_clear_paid'),
+            add_restriction                 => $cgi->param('add_restriction'),
+            remove_restriction              => $cgi->param('remove_restriction'),
+            age_limitation                  => $cgi->param('age_limitation'),
+            host                            => $cgi->param('host'),
+            username                        => $cgi->param('username'),
+            password                        => $cgi->param('password'),
+            upload_path                     => $cgi->param('upload_path'),
+            auto_clear_paid_threshold       => $cgi->param('auto_clear_paid_threshold'),
+            fees_created_before_date_filter => $cgi->param('fees_created_before_date_filter'),
+            debug                           => $cgi->param('debug'),
+            no_email                        => $cgi->param('no_email'),
+            archive_dir                     => $cgi->param('archive_dir'),
+        };
+
+        $self->_log_configuration_changes($settings);
+        $self->store_data($settings);
+
         $self->go_home();
     }
 }
