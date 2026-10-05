@@ -26,10 +26,11 @@ The plugin requires the Perl library _Text::CSV::Slurp_.
 Please install this library before installing the plugin.
 
 #### Cronjob
-This plugin uses Koha's nightly plugin cronjob system. You can set some environment variables to affect the behavior of this plugin:
-* `UMS_COLLECTIONS_DEBUG` - Set to 1 to unable debugging messages
-* `UMS_COLLECTIONS_NO_EMAIL` - Set to 1 to test without sending email
-* `UMS_COLLECTIONS_ARCHIVES_DIR` - Set to a path to keep copies of the files sent to UMS
+This plugin uses Koha's nightly plugin cronjob system. Each of these options can be set from the plugin configuration page, or by setting an environment variable for the cronjob. If the environment variable is set, it is used instead of the plugin setting.
+* `UMS_COLLECTIONS_DEBUG` ( Debug logging ) - Set to 1, 2, or 3 to enable info, debug, or trace logging to the `gentle_nudge_logs` directory in the Koha user's home directory
+* `UMS_COLLECTIONS_NO_EMAIL` ( Disable sending email ) - Set to 1 to test without sending email
+* `UMS_COLLECTIONS_ARCHIVES_DIR` ( Archive directory ) - Set to a path to keep copies of the files sent to UMS, files older than 30 days are deleted
+* `GENTLENUDGE_SFTP_DIR` ( Upload path ) - Set to the directory on the SFTP server to upload files to, defaults to `incoming`
 
 ### Configurations:
 

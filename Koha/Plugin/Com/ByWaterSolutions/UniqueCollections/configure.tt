@@ -219,6 +219,37 @@
               </div>
           </fieldset>
 
+          <fieldset>
+              <legend>Advanced settings</legend>
+              <span class="help-block">If the matching environment variable is set for the plugins_nightly.pl cronjob, it will be used instead of the setting here.</span>
+
+              <div class="form-group">
+                <label for="debug">Debug logging</label>
+                <select name="debug" class="form-control">
+                  <option value="0" [% UNLESS debug %]selected="selected"[% END %]>Off</option>
+                  <option value="1" [% IF debug == 1 %]selected="selected"[% END %]>Info</option>
+                  <option value="2" [% IF debug == 2 %]selected="selected"[% END %]>Debug</option>
+                  <option value="3" [% IF debug == 3 %]selected="selected"[% END %]>Trace</option>
+                </select>
+                <span class="help-block">Log files are written to the gentle_nudge_logs directory in the Koha user's home directory. Environment variable: UMS_COLLECTIONS_DEBUG</span>
+              </div>
+
+              <div class="form-group">
+                <label for="no_email">Disable sending email</label>
+                <select name="no_email" class="form-control">
+                  <option value="0" [% UNLESS no_email %]selected="selected"[% END %]>No</option>
+                  <option value="1" [% IF no_email %]selected="selected"[% END %]>Yes</option>
+                </select>
+                <span class="help-block">If enabled, reports will be created but not emailed. Useful for testing. Environment variable: UMS_COLLECTIONS_NO_EMAIL</span>
+              </div>
+
+              <div class="form-group">
+                <label for="archive_dir">Archive directory</label>
+                <input type="text" name="archive_dir" class="form-control" value="[% archive_dir | html %]">
+                <span class="help-block">Directory to keep copies of the files sent to UMS. Files older than 30 days are deleted. If left blank, files are written to /tmp and are not cleaned up by the plugin. Environment variable: UMS_COLLECTIONS_ARCHIVES_DIR</span>
+              </div>
+          </fieldset>
+
           <div class="form-group">
             <button type="submit" class="btn btn-default">Submit</button>
           </div>

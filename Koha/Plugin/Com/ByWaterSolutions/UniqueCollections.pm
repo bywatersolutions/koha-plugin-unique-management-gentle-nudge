@@ -102,6 +102,22 @@ sub _cc_email_addresses {
     return grep { $_ } split( /[\s,;]+/, $self->retrieve_data('cc_email') // q{} );
 }
 
+=head3 _load_runtime_settings
+
+Sets the debug, no email and archive directory options, environment variables take precedence over plugin settings
+
+    $self->_load_runtime_settings;
+
+=cut
+
+sub _load_runtime_settings {
+    my ($self) = @_;
+
+    $debug       = $ENV{UMS_COLLECTIONS_DEBUG}        // $self->retrieve_data('debug')       || 0;
+    $no_email    = $ENV{UMS_COLLECTIONS_NO_EMAIL}     // $self->retrieve_data('no_email')    || 0;
+    $archive_dir = $ENV{UMS_COLLECTIONS_ARCHIVES_DIR} // $self->retrieve_data('archive_dir') || undef;
+}
+
 =head3 new
 
 =cut
@@ -161,6 +177,9 @@ sub configure {
             attributes                      => scalar Koha::Patron::Attribute::Types->search(),
             auto_clear_paid_threshold       => $self->retrieve_data('auto_clear_paid_threshold'),
             fees_created_before_date_filter => $self->retrieve_data('fees_created_before_date_filter'),
+            debug                           => $self->retrieve_data('debug'),
+            no_email                        => $self->retrieve_data('no_email'),
+            archive_dir                     => $self->retrieve_data('archive_dir'),
         );
 
         $self->output_html( $template->output() );
@@ -188,6 +207,9 @@ sub configure {
                 upload_path                     => $cgi->param('upload_path'),
                 auto_clear_paid_threshold       => $cgi->param('auto_clear_paid_threshold'),
                 fees_created_before_date_filter => $cgi->param('fees_created_before_date_filter'),
+                debug                           => $cgi->param('debug'),
+                no_email                        => $cgi->param('no_email'),
+                archive_dir                     => $cgi->param('archive_dir'),
             }
         );
         $self->go_home();
@@ -200,6 +222,9 @@ sub configure {
 
 sub cronjob_nightly {
     my ( $self, $p ) = @_;
+
+    # Reload each run so setting changes apply and a previous run's '/tmp' archive dir fallback isn't reused
+    $self->_load_runtime_settings();
 
     $self->prune_old_logs();
 
