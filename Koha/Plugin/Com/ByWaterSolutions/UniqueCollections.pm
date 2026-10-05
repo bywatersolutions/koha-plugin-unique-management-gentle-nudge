@@ -179,7 +179,7 @@ sub configure {
     my ( $self, $args ) = @_;
     my $cgi = $self->{'cgi'};
 
-    unless ( $cgi->param('save') ) {
+    unless ( $cgi->param('op') && $cgi->param('op') eq 'cud-save' ) {
         my $template = $self->get_template( { file => 'configure.tt' } );
 
         if ( $cgi->param('sync') ) {

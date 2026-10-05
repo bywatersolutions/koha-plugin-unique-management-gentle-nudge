@@ -39,10 +39,11 @@
           <h3 class="panel-title">Settings</h3>
         </div>
 
-        <form method="get">
+        <form method="post">
+          [% INCLUDE 'csrf-token.inc' %]
           <input type="hidden" name="class" value="[% CLASS %]"/>
           <input type="hidden" name="method" value="[% METHOD %]"/>
-          <input type="hidden" name="save" value="1" />
+          <input type="hidden" name="op" value="cud-save" />
 
           <div class="form-group">
             <label for="run_on_dow">Day of week to run on</label>
