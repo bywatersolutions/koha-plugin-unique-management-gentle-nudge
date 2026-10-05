@@ -187,9 +187,9 @@
               </div>
 
               <div class="form-group">
-                <label for="cc_email">Additional email address</label>
+                <label for="cc_email">Additional email addresses</label>
                 <input type="text" name="cc_email" class="form-control" value="[% cc_email %]">
-                <span class="help-block">If you would like to send the report to another email address as well, enter it here.</span>
+                <span class="help-block">If you would like to send the report to other email addresses as well, enter them here as a comma delimited list. e.g. "one@example.com,two@example.com".</span>
               </div>
           </fieldset>
 

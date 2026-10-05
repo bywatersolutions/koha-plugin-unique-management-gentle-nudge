@@ -88,6 +88,20 @@ sub _column_exists {
     return 0;
 }
 
+=head3 _cc_email_addresses
+
+Returns the list of additional email addresses from the 'cc_email' setting
+
+    my @email_cc = $self->_cc_email_addresses;
+
+=cut
+
+sub _cc_email_addresses {
+    my ($self) = @_;
+
+    return grep { $_ } split( /[\s,;]+/, $self->retrieve_data('cc_email') // q{} );
+}
+
 =head3 new
 
 =cut
@@ -488,7 +502,7 @@ sub run_submissions_report {
 
         my $email_to   = $self->retrieve_data('unique_email');
         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
-        my $email_cc   = $self->retrieve_data('cc_email');
+        my @email_cc   = $self->_cc_email_addresses;
 
         $info = {
             count     => scalar @ums_new_submissions,
@@ -521,7 +535,7 @@ sub run_submissions_report {
             }
         }
 
-        foreach my $email_address ( $email_to, $email_cc ) {
+        foreach my $email_address ( $email_to, @email_cc ) {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
 
@@ -684,7 +698,7 @@ sub run_update_report_and_clear_paid {
 
         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
         my $email_to   = $self->retrieve_data('unique_email');
-        my $email_cc   = $self->retrieve_data('cc_email');
+        my @email_cc   = $self->_cc_email_addresses;
 
         if ($sftp_host) {
             $info->{sftp_host}     = $sftp_host;
@@ -711,7 +725,7 @@ sub run_update_report_and_clear_paid {
             }
         }
 
-        foreach my $email_address ( $email_to, $email_cc ) {
+        foreach my $email_address ( $email_to, @email_cc ) {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
 

@@ -53,6 +53,10 @@ If you charge the patron an additional fee when they are moved to collections, e
 
 This email will be provided to you by Unique Management Systems.  It is the email address at which they will receive the weekly, daily, and sync reports from Koha.
 
+#### Additional email addresses: who else should receive a copy of the reports?
+
+Enter a comma delimited list of email addresses that should also receive the weekly, daily, and sync reports. Each address is sent its own email.
+
 #### Collections flag: How are you identifying patrons in collections?
 
 This is the field that Koha will use to mark patrons as being in collections. Sort1, Sort2, or a Patron Attribute are often used. Your Data Librarian and Educator will discuss the options with you.
