@@ -982,7 +982,7 @@ sub uninstall() {
 }
 
 sub _log_file {
-    my $home   = $ENV{HOME} || ( getpwuid($<) )[7];
+    my $home   = ( getpwuid($<) )[7] || $ENV{HOME};
     my $logdir = File::Spec->catdir( $home, 'gentle_nudge_logs' );
     mkdir $logdir unless -d $logdir;
 
@@ -991,7 +991,7 @@ sub _log_file {
 }
 
 sub prune_old_logs {
-    my $home   = $ENV{HOME} || ( getpwuid($<) )[7];
+    my $home   = ( getpwuid($<) )[7] || $ENV{HOME};
     my $logdir = File::Spec->catdir( $home, 'gentle_nudge_logs' );
     mkdir $logdir unless -d $logdir;
 
