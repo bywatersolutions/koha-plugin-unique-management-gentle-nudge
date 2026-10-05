@@ -668,7 +668,7 @@ sub run_update_report_and_clear_paid {
         my $sth;
 
         my $ums_update_query = q{
-            SELECT borrowers.cardnumber,
+            SELECT MAX(borrowers.cardnumber)                      AS "cardnumber",
                    borrowers.borrowernumber,
                    MAX(borrowers.surname)                         AS "surname",
                    MAX(borrowers.firstname)                       AS "firstname",
