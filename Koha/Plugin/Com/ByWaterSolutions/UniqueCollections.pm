@@ -626,7 +626,7 @@ sub run_submissions_report {
             } catch {
                 $info->{email_failed}  = 'true';
                 $info->{email_address} = $email_address;
-                $info->{email_error}   = $_;
+                $info->{email_error}   = "$_";
 
                 logaction(
                     'GENTLENUDGE',        'NEW_SUBMISSIONS_ERROR', undef,
@@ -645,7 +645,7 @@ sub run_submissions_report {
         if ( $_->isa('Koha::Exception') ) {
             $info->{error} = $_->error . "\n" . $_->trace->as_string;
         } else {
-            $info->{error} = $_;
+            $info->{error} = "$_";
         }
 
         logaction(
@@ -816,7 +816,7 @@ sub run_update_report_and_clear_paid {
             } catch {
                 $info->{email_failed}  = 'true';
                 $info->{email_address} = $email_address;
-                $info->{email_error}   = $_;
+                $info->{email_error}   = "$_";
 
                 logaction(
                     'GENTLENUDGE',        uc($type) . "_ERROR", undef,
@@ -836,7 +836,7 @@ sub run_update_report_and_clear_paid {
         if ( $_->isa('Koha::Exception') ) {
             $info->{error} = $_->error . "\n" . $_->trace->as_string;
         } else {
-            $info->{error} = $_;
+            $info->{error} = "$_";
         }
 
         logaction(
