@@ -1,6 +1,6 @@
 {
   "name": "koha-plugin-unique-management-gentle-nudge",
-  "version": "1.0.0",
+  "version": "2.25.1",
   "description": "Koha Unique Management Gentle Nudge Plugin",
   "devDependencies": {
     "gulp": "^4.0.2",
