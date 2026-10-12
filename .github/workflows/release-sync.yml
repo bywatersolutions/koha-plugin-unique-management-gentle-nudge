@@ -74,7 +74,7 @@ jobs:
     - name: Commit version updates
       if: steps.check.outputs.needs_sync == 'true'
       run: |
-        git add package.json package-lock.json Koha/Plugin/Com/ByWaterSolutions/KitchenSink.pm
+        git add package.json package-lock.json Koha/Plugin/Com/ByWaterSolutions/UniqueCollections.pm
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
@@ -88,5 +88,5 @@ jobs:
     - name: Upload kpz to release
       uses: softprops/action-gh-release@v2
       with:
-        files: ./koha-plugin-kitchen-sink-v${{ steps.version.outputs.version }}.kpz
+        files: ./*.kpz
         tag_name: ${{ github.ref_name }}
